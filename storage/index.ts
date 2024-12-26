@@ -10,8 +10,21 @@ async function getDB(): Promise<SQLite.SQLiteDatabase> {
   return db!
 }
 
-export async function saveMessage(message: MessageData) {
-  
+export async function saveMessage(message: MessageData, roomId: string) {
+  const db = await getDB();
+  await db.runAsync(`
+    INSERT INTO messages (username, room_id, message_type, message_data, message_id, uuid, state)
+    VALUES(?, ?, ?, ?, ?, ?, ?)`,
+    [
+      message.msg.senderId,
+      roomId,
+      message.msg.type,
+      JSON.stringify(message.msg.content),
+      message.msg.msgId,
+      message.msg.uuid,
+      0
+    ])
+  console.log("save message success")
 }
 
 async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
@@ -24,6 +37,7 @@ async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
   }
   if (currentDbVersion!.user_version === 0) {
     await db.execAsync(`
+      DROP TABLE IF EXISTS messages;
       CREATE TABLE messages (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           username TEXT NOT NULL,
@@ -31,7 +45,8 @@ async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
           message_type INT NOT NULL,
           message_data TEXT NOT NULL,
           message_id TEXT NOT NULL,
-          uuid TEXT NOT NULL
+          uuid TEXT NOT NULL,
+          state INT NOT NULL
       );
 
       CREATE UNIQUE INDEX 'uniq_ru' ON messages (room_id, uuid);

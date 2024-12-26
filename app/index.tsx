@@ -15,8 +15,8 @@ import { EmojiKeyboard, EmojiType } from 'rn-emoji-keyboard';
 import { Box } from '@/components/ui/box';
 import { Keyboard } from 'react-native';
 import {saveMessage} from '@/storage'
-import FileSystem from "expo-file-system"
-import { useImageManipulator } from 'expo-image-manipulator';
+import { resizeImageWithAspectRatio } from '@/utils'
+import * as FileSystem from "expo-file-system"
 
 
 
@@ -52,26 +52,25 @@ export default function ChatScreen() {
     setRecording(false)
   }
 
-  const handleMedia = (uri: string) => {
-    console.log('Document directory: ', FileSystem.documentDirectory);
+  const handleMedia = async (uri: string) => {
     console.log('media uri: ', uri)
-    console.log('cache directory: ', FileSystem.cacheDirectory)
 
     const thumbnailUri = FileSystem.cacheDirectory + `/${roomId}/${Date.now().toString()}_thumbnial.png`
     const imageUri = FileSystem.cacheDirectory + `/${roomId}/${Date.now().toString()}.png`
-    console.log("hello world")
+    console.log(`thumbnail uri: ${thumbnailUri}`)
+    console.log(`image uri: ${imageUri}`)
 
     setMessages(pre => [
       ...pre,
       {
         msg: {
-          msgId: '16',
+          msgId: '17',
           senderId: 'jacobo',
           content: {
             text: 'new message'
           },
           type: 0,
-          uuid: '16',
+          uuid: '17',
         },
         success: true,
         failed: false,
@@ -80,56 +79,39 @@ export default function ChatScreen() {
     ])
     console.log("message updatd")
     // await RNFS.copyFile(uri, thumbnailUri)
-    Promise.all([
-      FileSystem.copyAsync({
-        from: uri,
-        to: thumbnailUri
-      }),
-      FileSystem.copyAsync({
-        from: uri,
-        to: imageUri
-      })
-    ]).then(() => {
-      useImageManipulator(thumbnailUri).resize({
-        width: 100,
-        height: 100
-      })
-      setMessages(pre => [
-        ...pre,
-        {
-          msg: {
-            msgId: Date.now().toString(),
-            senderId: 'me',
-            content: {
-              thumbnail: thumbnailUri,
-              img: imageUri
-            },
-            uuid: Date.now().toString(),
-            type: MessageType.IMAGE
-          },
-          success: true,
-          failed: false,
-          isSender: true
-        }
-      ])
-      console.log('save message to database')
-      saveMessage({
-        msg: {
-          msgId: Date.now().toString(),
-          senderId: 'me',
-          content: {
-            thumbnail: "hello world",
-            img: 'hello world'
-          },
-          uuid: Date.now().toString(),
-          type: MessageType.IMAGE
+    await FileSystem.copyAsync({
+      from: uri,
+      to: thumbnailUri
+    })
+    await FileSystem.copyAsync({
+      from: uri,
+      to: imageUri
+    })
+    
+    console.log("resizing image")
+    // scaleAndSaveImage(uri, thumbnailUri)
+    resizeImageWithAspectRatio(uri, 100, thumbnailUri)
+    console.log("resizing done")
+    const message = {
+      msg: {
+        msgId: Date.now().toString(),
+        senderId: 'me',
+        content: {
+          thumbnail: thumbnailUri,
+          img: imageUri
         },
-        success: true,
-        failed: false,
-        isSender: true
-      })
-    }).catch(err => console.log(err))
-
+        uuid: Date.now().toString(),
+        type: MessageType.IMAGE
+      },
+      success: false,
+      failed: false,
+      isSender: true
+    }
+    setMessages(pre => [
+      ...pre, message
+    ])
+    console.log('save message to database')
+    saveMessage(message, roomId)
   }
 
   const handleEmojiPick = (emoji: EmojiType) => {

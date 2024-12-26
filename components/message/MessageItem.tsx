@@ -2,11 +2,13 @@ import { ImageMessage, Message, MessageData, MessageType, TextMessage, VideoMess
 import { HStack } from "../ui/hstack"
 import { Avatar } from "@rneui/base"
 import { Center } from "../ui/center"
-import { Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Image } from "../ui/image";
 import React from "react";
-import { Modal } from "../ui/modal";
+import { Modal, ModalBody, ModalContent } from "../ui/modal";
 import Video from 'react-native-video';
+import { Box } from "../ui/box";
+import { Button } from "../ui/button";
 
 type MessageItemProps = {
     msg: MessageData
@@ -22,7 +24,8 @@ export default function MessageItem({ msg }: MessageItemProps) {
       />
       <Center style={{
         backgroundColor: 'white',
-        width: '60%',
+        // width: '60%',
+        maxWidth: '60%',
         padding: 10,
         borderRadius: 10
       }}>
@@ -33,7 +36,8 @@ export default function MessageItem({ msg }: MessageItemProps) {
     <HStack space='md' style={{ alignItems: 'center', alignSelf: 'flex-end' }}>
       <Center style={{
         backgroundColor: 'white',
-        width: '60%',
+        // width: '60%',
+        maxWidth: '60%',
         padding: 10,
         borderRadius: 10
       }}>
@@ -61,10 +65,21 @@ function MessageUnit({msg, style}: MessageUnitProps) {
       return <Text style={style}>{(msg.content as TextMessage).text}</Text>
     case MessageType.IMAGE:
       return (popup ?
-        <Modal>
-          <Image source={{ uri: (msg.content as ImageMessage).img}} />
+        <Modal
+          isOpen={popup}
+          onClose={() => setPopup(false)}
+          size="full"
+          style={{ width: '100%', height: '100%', position: 'absolute' }}
+        >
+          <ModalContent>
+            <ModalBody>
+              <Image source={{ uri: (msg.content as ImageMessage).img }} />
+            </ModalBody>
+          </ModalContent>
         </Modal> :
-        <Image style={style} source={{ uri: (msg.content as ImageMessage).thumbnail}} />
+        <Pressable style={style} onPress={() => setPopup(true)}>
+          <Image source={{ uri: (msg.content as ImageMessage).thumbnail }} />
+        </Pressable>
       )
     case MessageType.VIDEO:
       return (popup ?
