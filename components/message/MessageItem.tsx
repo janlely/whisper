@@ -2,7 +2,7 @@ import { ImageMessage, Message, MessageType, TextMessage, VideoMessage } from "@
 import { HStack } from "../ui/hstack"
 import { Avatar } from "@rneui/base"
 import { Center } from "../ui/center"
-import { Pressable, Text, StyleSheet } from 'react-native';
+import { Pressable, Text, StyleSheet, View } from 'react-native';
 import React from "react";
 import Animated from "react-native-reanimated";
 import { router } from "expo-router";
@@ -14,7 +14,7 @@ type MessageItemProps = {
 export default function MessageItem({ msg }: MessageItemProps) {
 
   return !msg.isSender ?
-    <HStack space='md' style={{ alignItems: 'center' }}>
+    <HStack space='md' style={[{ alignItems: 'center' }, styles.container]}>
       <Avatar
         rounded={false}
         title={msg.senderId.substring(0, 3)}
@@ -31,7 +31,7 @@ export default function MessageItem({ msg }: MessageItemProps) {
         <MessageUnit msg={msg} style={{ alignSelf: 'flex-start' }}/>
       </Center>
     </HStack> :
-    <HStack space='md' style={{ alignItems: 'center', alignSelf: 'flex-end' }}>
+    <HStack space='md' style={[{ alignItems: 'center', alignSelf: 'flex-end' }, styles.container]}>
       <Center style={{
         backgroundColor: 'white',
         // width: '60%',
@@ -82,6 +82,11 @@ function MessageUnit({msg, style}: MessageUnitProps) {
       return (
         <Image style={style} source={{ uri: (msg.content as VideoMessage).thumbnail}} />
       )
+    case MessageType.AUDIO:
+      return (
+        <View style={styles.audioContainer}>
+        </View>
+      )
   }
 }
 
@@ -91,8 +96,12 @@ const styles = StyleSheet.create({
     height: 100
   },
   container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginVertical: 10
   },
-});
+  audioContainer: {
+    width: 100,
+    height: 30,
+    backgroundColor: 'white',
+    borderRadius: 10
+  }
+})

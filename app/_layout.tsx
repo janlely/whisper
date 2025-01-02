@@ -46,6 +46,7 @@ export default function RootLayout() {
               options={{
                 headerShown: false,
                 statusBarHidden: true,
+                animation: 'fade',
                 // headerTitleAlign: 'center',
                 headerStyle: { backgroundColor: '#f5f5f5' },
               }}
@@ -54,6 +55,7 @@ export default function RootLayout() {
               name="index"
               options={{
                 headerShown: true,
+                animation: 'default',
                 headerTitleAlign: 'center',
                 headerStyle: { backgroundColor: '#f5f5f5' },
               }}

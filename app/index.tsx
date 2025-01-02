@@ -1,10 +1,10 @@
-import { ScrollView, Pressable, StyleSheet } from 'react-native';
+import { ScrollView, Pressable, StyleSheet, FlatList } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { Message, MessageType, MessageState } from '@/types';
+import { Message, MessageType, MessageState, AudioMessage } from '@/types';
 import MessageItem from '@/components/message/MessageItem';
 import { Input, InputField } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { resizeImageWithAspectRatio } from '@/utils'
 import * as FileSystem from "expo-file-system"
 import { useLocalSearchParams } from 'expo-router';
 import { getMessages } from '@/storage';
+import { Audio } from 'expo-av';
 
 
 
@@ -31,6 +32,8 @@ export default function ChatScreen() {
   const [openEmojiPicker, setOpenEmojiPicker] = React.useState(false);
   const [speaking, setSpeaking] = React.useState(false);
   const navigation = useNavigation();
+  const msgListRef = useRef<FlatList<Message>>(null)
+  const [permissionResponse, requestPermission] = Audio.usePermissions();
 
   const handleOnChange = (text: string) => {
     if (text !== "" && !inputing) {
@@ -44,14 +47,45 @@ export default function ChatScreen() {
 
   const handleSend = () => {
     setInputing(false)
+    const message = {
+      msgId: Date.now().toString(),
+      senderId: 'me',
+      content: { text: inputText },
+      type: MessageType.TEXT,
+      uuid: Date.now().toString(),
+      state: MessageState.SENDING,
+      isSender: true,
+      roomId: roomId
+    }
+    setMessages(pre => [message, ...pre])
+    msgListRef.current?.scrollToOffset({ offset: 0 })
+    saveMessage(message)
+    setInputText("")
+    //TODO: send to server
   }
 
   const handleAudioPressIn = () => {
     setRecording(true)
+    audioRecorder.record();
   }
 
-  const handleAudioPressOut= () => {
+  const handleAudioPressOut= async () => {
     setRecording(false)
+    await audioRecorder.stop()
+    const message = {
+      msgId: Date.now().toString(),
+      senderId: 'me',
+      content: { audio: audioRecorder.uri } as AudioMessage,
+      type: MessageType.AUDIO,
+      uuid: Date.now().toString(),
+      state: MessageState.SENDING,
+      isSender: true,
+      roomId: roomId
+    }
+    setMessages(pre => [message, ...pre])
+    msgListRef.current?.scrollToOffset({ offset: 0 })
+    saveMessage(message)
+    //TODO: send to server
   }
 
   const handleMedia = async (uri: string) => {
@@ -91,10 +125,14 @@ export default function ChatScreen() {
       roomId: roomId
     }
     setMessages(pre => [
-      ...pre, message
+      message, ...pre
     ])
     console.log('save message to database')
-    saveMessage(message, roomId)
+    saveMessage(message)
+    msgListRef.current?.scrollToOffset({
+      offset: 0,
+      animated: true
+    })
   }
 
   const handleEmojiPick = (emoji: EmojiType) => {
@@ -110,22 +148,22 @@ export default function ChatScreen() {
     })
   }, [])
 
-  // const migrateDbIfNeeded = async () => {
-    
-  // }
+  const handleOnEndReached = () => {
+    getMessages(roomId, 'before', 10, messages[messages.length-1].uuid).then(messages => {
+      setMessages(pre => [...pre, ...messages])
+    })
+  }
   return (
-// {/* <SQLiteProvider databaseName="test.db" onInit={migrateDbIfNeeded}> */}
     <VStack className='px-4' style={styles.rootContainer}>
-      <ScrollView
+      <FlatList
+        ref={msgListRef}
+        data={messages}
         showsVerticalScrollIndicator={false}
         style={styles.messageContainer}
-      >
-        <VStack space='md' style={styles.messageStack}>
-          {messages.map((item) => {
-            return <MessageItem key={item.msgId} msg={item} />
-          })}
-        </VStack>
-      </ScrollView>
+        renderItem={({ item }) => <MessageItem key={item.msgId} msg={item} />}
+        inverted
+        onEndReached={handleOnEndReached}
+      />
       <HStack space='sm' className='px-2' style={styles.bottomStack}>
         {!speaking ?
           <AudioLines onPress={() => setSpeaking(true)} color={'black'} style={styles.audio} /> :
@@ -169,7 +207,6 @@ export default function ChatScreen() {
         </Box>
       }
     </VStack>
-// </SQLiteProvider>
   );
 }
 

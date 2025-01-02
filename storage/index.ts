@@ -10,14 +10,14 @@ async function getDB(): Promise<SQLite.SQLiteDatabase> {
   return db!
 }
 
-export async function saveMessage(message: Message, roomId: string) {
+export async function saveMessage(message: Message) {
   const db = await getDB();
   await db.runAsync(`
     INSERT INTO messages (username, room_id, type, content, msg_id, uuid, state, is_sender)
     VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       message.senderId,
-      roomId,
+      message.roomId,
       message.type as number,
       JSON.stringify(message.content),
       message.msgId,
@@ -46,7 +46,7 @@ export async function getMessages(roomId: string, direction: "before" | "after",
     SELECT * FROM messages
     WHERE room_id = ?
     AND uuid < ?
-    ORDER BY uuid
+    ORDER BY uuid DESC
     LIMIT ?
     `, [roomId, uuid, limit])
   } else if (uuid && direction === "after") {
@@ -61,7 +61,7 @@ export async function getMessages(roomId: string, direction: "before" | "after",
     rows = await db.getAllAsync(`
     SELECT * FROM messages
     WHERE room_id = ?
-    ORDER BY uuid
+    ORDER BY uuid DESC
     LIMIT ?
     `, [roomId, limit])
   }

@@ -1,7 +1,8 @@
 export enum MessageType {
     TEXT = 0,
     IMAGE = 1,
-    VIDEO = 2
+    VIDEO = 2,
+    AUDIO = 3
 }
 
 export enum MessageState {
@@ -24,13 +25,17 @@ export type VideoMessage = {
     video: string,
 }
 
+export type AudioMessage = {
+    audio: string
+}
+
 export type Message = {
     msgId: string,
     senderId: string,
-    content: TextMessage | ImageMessage | VideoMessage,
+    content: TextMessage | ImageMessage | VideoMessage | AudioMessage,
     uuid: string,
     type: MessageType,
     state: MessageState,
     roomId: string,
-    isSender: boolean
+    isSender: boolean,
 }
