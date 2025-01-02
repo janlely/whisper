@@ -4,6 +4,12 @@ export enum MessageType {
     VIDEO = 2
 }
 
+export enum MessageState {
+    SENDING = 0,
+    SUCCESS = 1,
+    FAILED = 2
+}
+
 export type TextMessage = {
     text: string
 }
@@ -23,12 +29,8 @@ export type Message = {
     senderId: string,
     content: TextMessage | ImageMessage | VideoMessage,
     uuid: string,
-    type: MessageType
-}
-
-export type MessageData = {
-    msg: Message,
-    success: boolean,
-    failed: boolean,
+    type: MessageType,
+    state: MessageState,
+    roomId: string,
     isSender: boolean
 }

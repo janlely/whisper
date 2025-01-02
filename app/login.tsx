@@ -4,13 +4,24 @@ import { Input, InputField } from "@/components/ui/input";
 import { VStack } from "@/components/ui/vstack";
 import { StyleSheet } from 'react-native';
 import { router } from "expo-router";
+import React, { useEffect } from "react";
 
 export default function LoginScreen() {
 
+  const [roomId, setRoomId] = React.useState('');
+
   const handleOnPress = () => {
     //TODO: authenticate
-    router.replace('/');
+    console.log("go to index, roomId: ", roomId)
+    router.replace({
+      pathname: '/',
+      params: {roomId: roomId},
+    });
   }
+
+  useEffect(() => {
+    setRoomId('好好学习')
+  }, [])
   return (
     <Center style={{ width: '100%', height: '100%' }}>
       <VStack space="md" style={{ width: '55%' }}>
@@ -42,7 +53,7 @@ export default function LoginScreen() {
           isReadOnly={false}
           style={styles.input}
         >
-          <InputField value="好好学习" />
+          <InputField value={roomId} onChangeText={(text) => {setRoomId(text)}} />
         </Input>
         <Button
           className="ml-auto w-full"

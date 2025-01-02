@@ -4,7 +4,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
 import React from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { MessageData, MessageType } from '@/types';
+import { Message, MessageType, MessageState } from '@/types';
 import MessageItem from '@/components/message/MessageItem';
 import { Input, InputField } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,14 @@ import { Keyboard } from 'react-native';
 import {saveMessage} from '@/storage'
 import { resizeImageWithAspectRatio } from '@/utils'
 import * as FileSystem from "expo-file-system"
+import { useLocalSearchParams } from 'expo-router';
+import { getMessages } from '@/storage';
 
 
 
 export default function ChatScreen() {
-  const [roomId, setRoomId] = React.useState('');
-  const [messages, setMessages] = React.useState<MessageData[]>([]);
+  const { roomId }  = useLocalSearchParams<{ roomId: string }>();
+  const [messages, setMessages] = React.useState<Message[]>([]);
   const [inputing, setInputing] = React.useState(false);
   const [inputText, setInputText] = React.useState('');
   const [recording, setRecording] = React.useState(false);
@@ -60,23 +62,6 @@ export default function ChatScreen() {
     console.log(`thumbnail uri: ${thumbnailUri}`)
     console.log(`image uri: ${imageUri}`)
 
-    setMessages(pre => [
-      ...pre,
-      {
-        msg: {
-          msgId: '17',
-          senderId: 'jacobo',
-          content: {
-            text: 'new message'
-          },
-          type: 0,
-          uuid: '17',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      }
-    ])
     console.log("message updatd")
     // await RNFS.copyFile(uri, thumbnailUri)
     await FileSystem.copyAsync({
@@ -93,19 +78,17 @@ export default function ChatScreen() {
     resizeImageWithAspectRatio(uri, 100, thumbnailUri)
     console.log("resizing done")
     const message = {
-      msg: {
-        msgId: Date.now().toString(),
-        senderId: 'me',
-        content: {
-          thumbnail: thumbnailUri,
-          img: imageUri
-        },
-        uuid: Date.now().toString(),
-        type: MessageType.IMAGE
+      msgId: Date.now().toString(),
+      senderId: 'me',
+      content: {
+        thumbnail: thumbnailUri,
+        img: imageUri
       },
-      success: false,
-      failed: false,
-      isSender: true
+      uuid: Date.now().toString(),
+      type: MessageType.IMAGE,
+      state: MessageState.SENDING,
+      isSender: true,
+      roomId: roomId
     }
     setMessages(pre => [
       ...pre, message
@@ -120,234 +103,11 @@ export default function ChatScreen() {
   }
   React.useEffect(() => {
     navigation.setOptions({
-      headerTitle: '好好学习',
+      headerTitle: roomId,
     })
-    setMessages([
-      {
-        msg: {
-          msgId: '1',
-          senderId: 'me',
-          content: {
-            text: 'hello'
-          },
-          type: 0,
-          uuid: '1',
-        },
-        success: true,
-        failed: false,
-        isSender: true
-      },
-      {
-        msg: {
-          msgId: '2',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world this is a long text, i don\'n know how it will look like',
-          },
-          type: 0,
-          uuid: '2',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '3',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '3',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '4',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '4',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '5',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '5',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '6',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '6',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '7',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '7',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '8',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '8',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '9',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '9',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '10',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '10',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '11',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '11',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '12',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '12',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '13',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '13',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '14',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '14',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '15',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '15',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-      {
-        msg: {
-          msgId: '16',
-          senderId: 'jacobo',
-          content: {
-            text: 'hello world'
-          },
-          type: 0,
-          uuid: '16',
-        },
-        success: true,
-        failed: false,
-        isSender: false 
-      },
-    ])
+    getMessages(roomId, 'before', 10).then(messages => {
+      setMessages(messages)
+    })
   }, [])
 
   // const migrateDbIfNeeded = async () => {
@@ -362,7 +122,7 @@ export default function ChatScreen() {
       >
         <VStack space='md' style={styles.messageStack}>
           {messages.map((item) => {
-            return <MessageItem key={item.msg.msgId} msg={item} />
+            return <MessageItem key={item.msgId} msg={item} />
           })}
         </VStack>
       </ScrollView>
