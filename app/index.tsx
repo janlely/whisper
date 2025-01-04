@@ -15,7 +15,7 @@ import { EmojiKeyboard, EmojiType } from 'rn-emoji-keyboard';
 import { Box } from '@/components/ui/box';
 import { Keyboard } from 'react-native';
 import {saveMessage} from '@/storage'
-import { resizeImageWithAspectRatio } from '@/utils'
+import { resizeImageWithAspectRatio, uniqueByProperty } from '@/utils'
 import * as FileSystem from "expo-file-system"
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Storage from '@/storage';
@@ -51,11 +51,11 @@ export default function ChatScreen() {
 
   const updateMessages: UpdateMessages = (input)  => {
     if (typeof input === 'function') {
-      messagesRef.current = input(messagesRef.current);
-      setMessages(pre => input(pre))
+      messagesRef.current = uniqueByProperty(input(messagesRef.current), item => item.senderId + item.msgId);
+      setMessages(messagesRef.current)
     } else {
-      messagesRef.current = input;
-      setMessages(input)
+      messagesRef.current = uniqueByProperty(input, item => item.senderId + item.msgId);;
+      setMessages(messagesRef.current)
     }
   }
     

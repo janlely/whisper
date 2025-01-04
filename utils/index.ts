@@ -12,3 +12,16 @@ export async function resizeImageWithAspectRatio(imageUri: string, width: number
         to: dest
     })
 }
+
+export const uniqueByProperty = (items: any[], propGetter: (_: any) => any): any[] => {
+  const seen = new Set();
+  return items.filter(item => {
+    const propValue = propGetter(item);
+    if (seen.has(propValue)) {
+      return false;
+    } else {
+      seen.add(propValue);
+      return true;
+    }
+  });
+}
