@@ -9,10 +9,27 @@ const SELECT_STRING = `
 `
 async function getDB(): Promise<SQLite.SQLiteDatabase> {
   if (!db) {
-    db = await SQLite.openDatabaseAsync('testDB4');
+    db = await SQLite.openDatabaseAsync('testDB8');
     await migrateDbIfNeeded(db)
   }
   return db!
+}
+
+export async function getValue(key: string): Promise<string | null> {
+  const db = await getDB();
+  const row: {value: string} | null = await db.getFirstAsync(`SELECT value FROM kv WHERE key = ?`, [key])
+  return row!.value
+}
+
+export async function setValue(key: string, value: string) {
+  const db = await getDB();
+  await db.runAsync(`INSERT INTO kv (key, value) VALUES(?, ?)`, [key, value])
+}
+
+export async function saveMessages(messages: Message[]) {
+  return Promise.all(messages.map(msg => {
+    saveMessage(msg)
+  }))
 }
 
 export async function saveMessage(message: Message): Promise<number> {
@@ -20,7 +37,8 @@ export async function saveMessage(message: Message): Promise<number> {
   const db = await getDB();
   await db.runAsync(`
     INSERT INTO messages (username, room_id, type, content, msg_id, uuid, state, is_sender)
-    VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT DO NOTHING`,
     [
       message.senderId,
       message.roomId,
@@ -135,6 +153,12 @@ async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
   }
   if (currentDbVersion!.user_version === 0) {
     await db.execAsync(`
+      DROP TABLE IF EXISTS kv;
+      CREATE TABLE kv (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          key TEXT NOT NULL,
+          value TEXT NOT NULL
+      );
       DROP TABLE IF EXISTS messages;
       CREATE TABLE messages (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -147,7 +171,6 @@ async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
           state INT NOT NULL,
           is_sender INT NOT NULL
       );
-
       CREATE UNIQUE INDEX 'uniq_rum' ON messages (room_id, username, msg_id);
       CREATE INDEX 'idx_ru' ON messages (room_id, uuid);
     `);

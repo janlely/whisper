@@ -31,7 +31,13 @@ export const connect = (roomId: string, onopen: () => void, onmessage: (_: strin
   };
 }
 
-export function sendMessage(message: Message, roomId: string, onSuccess: (uuid: number) => void, on401: () => void, onerror: () => void) {
+export function sendMessage(
+  message: Message,
+  roomId: string,
+  onSuccess: (uuid: number) => void,
+  on401: () => void,
+  onerror: (error: any) => void
+) {
   getAxiosCli().post("/api/chat/send", {
     messageId: message.msgId,
     type: message.type,
@@ -48,7 +54,7 @@ export function sendMessage(message: Message, roomId: string, onSuccess: (uuid: 
     }
     onSuccess(res.data.uuid)
   }).catch(e => {
-    onerror()
+    onerror(e)
   })
 }
 
@@ -56,22 +62,25 @@ export function pullMessage(
   roomId: string,
   uuid: number,
   direction: "before" | "after",
+  tillNoMore: boolean,
   onSuccess: (msgs: Message[]) => void,
   on401: () => void,
-  onerror: () => void
+  onerror: (e: any) => void
 ) {
-  axios.post("/api/chat/pull", {
+  console.log(`request: roomId: ${roomId}, uuid: ${uuid}, direction: ${direction}`)
+  getAxiosCli().post("/api/chat/pull", {
     uuid: uuid,
     direction: direction
   }, {
     headers: {
-      "RoomId": roomId
+      "RoomId": encodeURIComponent(roomId)
     }
   }).then(res => {
     if (res.status === 401) {
       on401()
       return
     }
+    console.log(`response date: ${JSON.stringify(res.data)}`)
     const receivedMessages: {
       message: {
         messageId: number,
@@ -83,18 +92,22 @@ export function pullMessage(
       success: boolean,
       uuid: number
     }[] = res.data
+    console.log("receivedMessages: ", receivedMessages)
     onSuccess(receivedMessages.map(m => ({
-      msgId: res.data.message.messageId,
-      senderId: res.data.message.sender,
-      content: JSON.parse(res.data.message.data),
-      uuid: res.data.uuid,
-      type: res.data.message.type,
+      msgId: m.message.messageId,
+      senderId: m.message.sender,
+      content: JSON.parse(m.message.data),
+      uuid: m.uuid,
+      type: m.message.type,
       state: MessageState.SUCCESS,
       roomId: roomId,
       isSender: false,
     })))
+    if (tillNoMore && direction === "after" && receivedMessages.length > 0) {
+      pullMessage(roomId, receivedMessages[receivedMessages.length - 1].uuid, "after", tillNoMore, onSuccess, on401, onerror)
+    }
   }).catch(e => {
-    onerror()
+    onerror(e)
   })
 }
 

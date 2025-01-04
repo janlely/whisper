@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, FlatList } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
@@ -47,6 +47,7 @@ export default function ChatScreen() {
   const [audioRecording, setAudioRecording] = React.useState<Recording>()
   const recordDuration = React.useRef(0)
   const messagesRef = React.useRef<Message[]>([]);  // 创建 messages 的引用
+  const usernameRef = React.useRef<string>('')
 
   const updateMessages: UpdateMessages = (input)  => {
     if (typeof input === 'function') {
@@ -110,7 +111,7 @@ export default function ChatScreen() {
     setInputing(false)
     const message = {
       msgId: Date.now(),
-      senderId: 'me',
+      senderId: usernameRef.current,
       content: { text: inputText },
       type: MessageType.TEXT,
       uuid: Date.now(),
@@ -118,11 +119,13 @@ export default function ChatScreen() {
       isSender: true,
       roomId: roomId
     }
+    setInputText("")
     updateMessages(pre => [message, ...pre])
     msgListRef.current?.scrollToOffset({ offset: 0 })
     saveMessage(message).then(id => {
-      setInputText("")
       sendMessage(message, id)
+    }).catch(e => {
+      console.log('save message error: ', e)
     })
   }
 
@@ -170,7 +173,7 @@ export default function ChatScreen() {
     }
     const message = {
       msgId: Date.now(),
-      senderId: 'me',
+      senderId: usernameRef.current,
       content: { audio: uri!, duration: duration} as AudioMessage,
       type: MessageType.AUDIO,
       uuid: Date.now(),
@@ -215,7 +218,7 @@ export default function ChatScreen() {
     console.log("resizing done")
     const message = {
       msgId: Date.now(),
-      senderId: 'me',
+      senderId: usernameRef.current,
       content: {
         thumbnail: thumbnailUri,
         img: imageUri
@@ -244,38 +247,67 @@ export default function ChatScreen() {
     setInputText(pre => pre + emoji.emoji)
     setInputing(true)
   }
+
+
+  const onMessagePulled = async (msgs: Message[]) => {
+    //图片，视频下载缩略图
+    const newMessages = await Promise.all(msgs.map(async msg => {
+      if (msg.type === MessageType.IMAGE || msg.type === MessageType.VIDEO) {
+        const fileUrl = await Net.downloadFile((msg.content as { thumbnail: string }).thumbnail, roomId)
+        return { ...msg, content: { ...(msg.content as object), thumbnail: fileUrl } } as Message
+      }
+      return msg
+    }))
+    await Storage.saveMessages(newMessages)
+    updateMessages(pre => [...newMessages, ...pre])
+  }
+  const syncMessage = async () => {
+    console.log('syart sync message')
+    try {
+      let msgUUID: number = 0
+      let direction: "before" | "after" = "before"
+      let tillNoMore = false
+      const msgs: Message[] = await Storage.getMessages(roomId, 'before', 1)
+      if (msgs.length > 0) {
+        msgUUID = msgs[0].uuid
+        direction = "after"
+        tillNoMore = true
+      }
+      Net.pullMessage(roomId, msgUUID, direction, tillNoMore, onMessagePulled,
+      () => {
+        router.replace('/login')
+      }, (e) => {
+        console.log("pull message failed: ", e)
+      })
+    } catch (error) {
+      console.log("pullMessage error: ", error)
+    }
+  }
   React.useEffect(() => {
     navigation.setOptions({
       headerTitle: roomId,
     })
-    Storage.getMessages(roomId, 'before', 10).then(messages => {
-      console.log("messages size: ", messages.length)
-      updateMessages(messages)
+    Storage.getValue('username').then(username => {
+      if (!username) {
+        router.replace('/login')
+        return
+      }
+      usernameRef.current = username!
+    })
+    //拉取最新消息
+    syncMessage().then(() => {
+      Storage.getMessages(roomId, 'before', 10).then(messages => {
+        console.log("messages size: ", messages.length)
+        updateMessages(messages)
+      })
+    }).catch(e => {
+      console.log("syncMessage error: ", e)
     })
     Net.connect(roomId, () => {
       console.log("connected")
-    }, async (msg: string) => {
+    }, (msg: string) => {
       if (msg === "notify") {
-        try {
-          const msgs: Message[] = await Storage.getMessages(roomId, 'before', 1)
-          Net.pullMessage(roomId, msgs[0].uuid, "after", async (msgs: Message[]) => {
-            //图片，视频下载缩略图
-            const newMessages = await Promise.all(msgs.map(async msg => {
-              if (msg.type === MessageType.IMAGE || msg.type === MessageType.VIDEO) {
-                const fileUrl = await Net.downloadFile((msg.content as {thumbnail: string}).thumbnail, roomId)
-                return {...msg, content: {...(msg.content as object), thumbnail: fileUrl}} as Message
-              }
-              return msg
-            }))
-            updateMessages(pre => [...newMessages, ...pre])
-          }, () => {
-            router.replace('/login')
-          }, () => {
-            console.log("pull message failed")
-          })
-        } catch (error) {
-          console.log("pullMessage error: ", error)
-        }
+        syncMessage()
       }
     }, () => {
       router.replace('/login')
@@ -289,7 +321,14 @@ export default function ChatScreen() {
     console.log("current messages: ", messages)
     console.log("handleOnEndReached, uuid: ", messages[messages.length-1].uuid)
     Storage.getMessages(roomId, 'before', 10, messages[messages.length-1].uuid).then(messages => {
-      updateMessages(pre => [...pre, ...messages])
+      if (messages.length === 0) {
+        Net.pullMessage(roomId, messages[messages.length-1].uuid, 'before', false,
+          onMessagePulled,
+          () => {},
+          () => {})
+      } else {
+        updateMessages(pre => [...pre, ...messages])
+      }
     })
   }
 
@@ -308,7 +347,7 @@ export default function ChatScreen() {
         ref={msgListRef}
         data={messages}
         showsVerticalScrollIndicator={false}
-        style={styles.messageContainer}
+        // style={styles.messageContainer}
         renderItem={flatListItemRender}
         keyExtractor={(item: Message) => {
           return item.senderId + item.msgId;

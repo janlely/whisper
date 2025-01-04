@@ -6,7 +6,8 @@ import { StyleSheet } from 'react-native';
 import { router } from "expo-router";
 import React, { useEffect } from "react";
 import {login} from '@/net'
-import Animated, { useSharedValue, withDelay, withSequence, withTiming } from "react-native-reanimated";
+import Animated, { useSharedValue, withSequence, withTiming } from "react-native-reanimated";
+import * as Storage from '@/storage'
 
 export default function LoginScreen() {
 
@@ -20,7 +21,8 @@ export default function LoginScreen() {
     //TODO: authenticate
     console.log("go to index, roomId: ", roomId)
     login(roomId, username, optToken,
-      () => {
+      async () => {
+        await Storage.setValue('username', username)
         router.replace({
           pathname: '/',
           params: { roomId: roomId },
