@@ -2,15 +2,21 @@ import { Message } from '@/types';
 import * as SQLite from 'expo-sqlite';
 
 let db: SQLite.SQLiteDatabase | undefined;
+
+const SELECT_STRING = `
+    SELECT username as senderId, room_id as roomId, type, content, msg_id as msgId, uuid, state, is_sender as isSender
+    FROM messages
+`
 async function getDB(): Promise<SQLite.SQLiteDatabase> {
   if (!db) {
-    db = await SQLite.openDatabaseAsync('whisper');
+    db = await SQLite.openDatabaseAsync('testDB4');
     await migrateDbIfNeeded(db)
   }
   return db!
 }
 
-export async function saveMessage(message: Message) {
+export async function saveMessage(message: Message): Promise<number> {
+  console.log('message to save: ', message)
   const db = await getDB();
   await db.runAsync(`
     INSERT INTO messages (username, room_id, type, content, msg_id, uuid, state, is_sender)
@@ -26,86 +32,95 @@ export async function saveMessage(message: Message) {
       message.isSender ? 1 : 0
     ])
   console.log("save message success")
+  const row: {id:number} | null = await db.getFirstAsync(`SELECT last_insert_rowid() as id`)
+  return row!.id
 }
 
 
-export async function getMessages(roomId: string, direction: "before" | "after", limit: number, uuid?: string): Promise<Message[]> {
+export async function failed(roomId: string, msgId: number) {
   const db = await getDB();
-  let rows: {
-    username: string,
-    room_id: string,
-    type: number,
-    content: string,
-    msg_id: string,
-    uuid: string,
-    state: number,
-    is_sender: number
-  }[]
+  await db.runAsync(`
+    UPDATE messages
+    SET state = 2
+    WHERE room_id = ?
+    AND msg_id = ?
+    AND is_sender = 1
+    `, [roomId, msgId])
+}
+
+export async function updateContent(roomId: string, uuid: number, content: { img: string; thumbnail: string; }) {
+  console.log(`to be updated, uuid: ${uuid}`)
+  const db = await getDB();
+  await db.runAsync(`
+    UPDATE messages
+    SET content = ?
+    WHERE room_id = ?
+    AND uuid= ?
+    `, [JSON.stringify(content), roomId, uuid])
+}
+
+export async function updateUUID(id: number, uuid: number) {
+  console.log(`to be updated id: ${id}, uuid: ${uuid}`)
+  const db = await getDB();
+  await db.runAsync(`
+    UPDATE messages
+    SET uuid = ? , state = 1
+    WHERE id = ?
+    `, [uuid, id])
+}
+
+export async function getMessages(roomId: string, direction: "before" | "after", limit: number, uuid?: number): Promise<Message[]> {
+  
+  const db = await getDB();
+  let rows: Message[]
   if (uuid && direction === "before") {
     rows = await db.getAllAsync(`
-    SELECT * FROM messages
+    ${SELECT_STRING}
     WHERE room_id = ?
     AND uuid < ?
     ORDER BY uuid DESC
     LIMIT ?
     `, [roomId, uuid, limit])
+    console.log('rows1: ', rows)
   } else if (uuid && direction === "after") {
     rows = await db.getAllAsync(`
-    SELECT * FROM messages
+    ${SELECT_STRING}
     WHERE room_id = ?
     AND uuid > ?
     ORDER BY uuid
     LIMIT ?
     `, [roomId, uuid, limit])
+    console.log('rows2: ', rows)
   } else {
     rows = await db.getAllAsync(`
-    SELECT * FROM messages
+    ${SELECT_STRING}
     WHERE room_id = ?
     ORDER BY uuid DESC
     LIMIT ?
     `, [roomId, limit])
+    console.log('rows3: ', rows)
   }
 
-  return rows.map(row => ({
-    msgId: row.msg_id,
-    senderId: row.username,
-    uuid: row.uuid,
-    roomId: row.room_id,
-    type: row.type,
-    state: row.state,
-    content: JSON.parse(row.content),
-    isSender: row.is_sender === 1
-  }))
+  console.log('getMessages: ', rows)
+  return rows.map(row => {
+    const msg = JSON.parse(row.content as string)
+    return {...row, content: msg}
+  })
 }
 
 
 export async function getImagesMessages(roomId: string): Promise<Message[]> {
   const db = await getDB();
-  const rows: {
-    username: string,
-    room_id: string,
-    type: number,
-    content: string,
-    msg_id: string,
-    uuid: string,
-    state: number,
-    is_sender: number
-  }[] = await db.getAllAsync(`
-    SELECT * FROM messages
+  const rows: Message[] = await db.getAllAsync(`
+    ${SELECT_STRING}
     WHERE room_id = ?
     AND type = 1
     `, [roomId])
 
-  return rows.map(row => ({
-    msgId: row.msg_id,
-    senderId: row.username,
-    uuid: row.uuid,
-    roomId: row.room_id,
-    type: row.type,
-    state: row.state,
-    content: JSON.parse(row.content),
-    isSender: row.is_sender === 1
-  }))
+  return rows.map(row => {
+    const msg = JSON.parse(row.content as string)
+    return {...row, content: msg}
+  })
 }
 
 
@@ -127,14 +142,16 @@ async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
           room_id TEXT NOT NULL,
           type INT NOT NULL,
           content TEXT NOT NULL,
-          msg_id TEXT NOT NULL,
-          uuid TEXT NOT NULL,
+          msg_id INT NOT NULL,
+          uuid UNSIGNED INT NOT NULL,
           state INT NOT NULL,
           is_sender INT NOT NULL
       );
 
-      CREATE UNIQUE INDEX 'uniq_ru' ON messages (room_id, uuid);
+      CREATE UNIQUE INDEX 'uniq_rum' ON messages (room_id, username, msg_id);
+      CREATE INDEX 'idx_ru' ON messages (room_id, uuid);
     `);
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
 }
+

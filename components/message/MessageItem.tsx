@@ -1,18 +1,35 @@
-import { ImageMessage, Message, MessageType, TextMessage, VideoMessage } from "@/types"
+import { AudioMessage, ImageMessage, Message, MessageState, MessageType, TextMessage, VideoMessage } from "@/types"
 import { HStack } from "../ui/hstack"
 import { Avatar } from "@rneui/base"
 import { Center } from "../ui/center"
-import { Pressable, Text, StyleSheet, View } from 'react-native';
-import React from "react";
-import Animated from "react-native-reanimated";
+import { Pressable, Text, StyleSheet, View, ActivityIndicator } from 'react-native';
+import React, { useEffect } from "react";
 import { router } from "expo-router";
 import { Image } from "expo-image";
+import AudioAnimatedIcon from "./AudioAnimatedIcon";
+import { Audio } from 'expo-av';
+import { Sound } from "expo-av/build/Audio";
+import { RotateCcw } from "lucide-react-native";
+import * as Net from '@/net'
+import * as Storgage from '@/storage'
 
 type MessageItemProps = {
-    msg: Message
+    msg: Message,
+    retry: (_: Message) => void
 }
-export default function MessageItem({ msg }: MessageItemProps) {
+export default function MessageItem({ msg, retry }: MessageItemProps) {
 
+  // const [state, setState] = React.useState<MessageState>()
+
+  useEffect(() => {
+    console.log(`msg ${JSON.stringify(msg.content)} state is ${msg.state}`)
+   }, [])
+
+  const onRetry = () => {
+    console.log("retry")
+    retry(msg)
+    // setState(MessageState.SENDING)
+  }
   return !msg.isSender ?
     <HStack space='md' style={[{ alignItems: 'center' }, styles.container]}>
       <Avatar
@@ -28,10 +45,16 @@ export default function MessageItem({ msg }: MessageItemProps) {
         padding: 10,
         borderRadius: 10
       }}>
-        <MessageUnit msg={msg} style={{ alignSelf: 'flex-start' }}/>
+        <MessageUnit msg={msg} style={{ alignSelf: 'flex-start' }} direction="left"/>
       </Center>
     </HStack> :
     <HStack space='md' style={[{ alignItems: 'center', alignSelf: 'flex-end' }, styles.container]}>
+      {msg.state === MessageState.SENDING && <ActivityIndicator /> }
+      {msg.state === MessageState.FAILED &&
+        <Pressable onPress={onRetry}>
+          <RotateCcw color='black' />
+        </Pressable>
+      }
       <Center style={{
         backgroundColor: 'white',
         // width: '60%',
@@ -39,7 +62,7 @@ export default function MessageItem({ msg }: MessageItemProps) {
         padding: 10,
         borderRadius: 10
       }}>
-        <MessageUnit msg={msg} style={{ alignSelf: 'flex-end' }}/>
+        <MessageUnit msg={msg} style={{ alignSelf: 'flex-end' }} direction="right"/>
       </Center>
       <Avatar
         rounded={false}
@@ -52,17 +75,38 @@ export default function MessageItem({ msg }: MessageItemProps) {
 
 type MessageUnitProps = {
   style?: any,
-  msg: Message
+  msg: Message,
+  direction?: 'left' | 'right'
 }
-function MessageUnit({msg, style}: MessageUnitProps) {
+function MessageUnit({msg, style, direction}: MessageUnitProps) {
+
+  const [playing, setPlaying] = React.useState(false)
+  const sound = React.useRef<Sound>()
   
-  const goToImageViewer = (roomId: string, uuid: string) => {
+  const goToImageViewer = async (roomId: string, uuid: number) => {
     console.log("roomId: ", roomId)
     console.log("uuid: ", uuid)
+    //如果原图没下载，先下载原图
+    if ((msg.content as ImageMessage).img.startsWith('http')) {
+      const fileUrl =  await Net.downloadFile((msg.content as ImageMessage).img, roomId)
+      await Storgage.updateContent(roomId, uuid, { ...(msg.content as ImageMessage), img: fileUrl })
+    }
     router.push({
       pathname: '/imageviewer',
       params: { roomId, uuid },
     })
+  }
+
+  const playAudio = async () => {
+    if (playing) {
+      setPlaying(false)
+      await sound.current?.unloadAsync()
+      sound.current = undefined
+    } else {
+      setPlaying(true)
+      sound.current  = (await Audio.Sound.createAsync({ uri: (msg.content as AudioMessage).audio })).sound
+      sound.current.playAsync()
+    }
   }
 
   switch (msg.type) {
@@ -84,8 +128,12 @@ function MessageUnit({msg, style}: MessageUnitProps) {
       )
     case MessageType.AUDIO:
       return (
-        <View style={styles.audioContainer}>
-        </View>
+        <Pressable onPress={playAudio}>
+          <View style={[styles.audioContainer, { justifyContent: direction === 'right' ? 'flex-end' : 'flex-start'}]}>
+            <Text style={{ marginHorizontal: 10 }}>{Math.round((msg.content as AudioMessage).duration / 1000)}s</Text>
+            <AudioAnimatedIcon size={24} playing={playing} rotate={direction === 'right' ? 180 : 0} />
+          </View>
+        </Pressable>
       )
   }
 }
@@ -101,7 +149,8 @@ const styles = StyleSheet.create({
   audioContainer: {
     width: 100,
     height: 30,
-    backgroundColor: 'white',
-    borderRadius: 10
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center'
   }
 })

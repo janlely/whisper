@@ -46,6 +46,7 @@ export default function RootLayout() {
               options={{
                 headerShown: false,
                 statusBarHidden: true,
+                // statusBarTranslucent: true,
                 animation: 'fade',
                 // headerTitleAlign: 'center',
                 headerStyle: { backgroundColor: '#f5f5f5' },
@@ -62,7 +63,7 @@ export default function RootLayout() {
             />
             <Stack.Screen name="+not-found" />
           </Stack>
-          <StatusBar style="auto" />
+          <StatusBar style="dark" />
         </ThemeProvider>
       </GluestackUIProvider>
     </GestureHandlerRootView>

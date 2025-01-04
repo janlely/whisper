@@ -5,18 +5,46 @@ import { VStack } from "@/components/ui/vstack";
 import { StyleSheet } from 'react-native';
 import { router } from "expo-router";
 import React, { useEffect } from "react";
+import {login} from '@/net'
+import Animated, { useSharedValue, withDelay, withSequence, withTiming } from "react-native-reanimated";
 
 export default function LoginScreen() {
 
   const [roomId, setRoomId] = React.useState('');
+  const [username, setUsername] = React.useState('');
+  const [optToken, setOptToken] = React.useState('');
+  const optTokenX = useSharedValue(0)
+  const [borderColor, setBorderColor] = React.useState('lightgray')
 
   const handleOnPress = () => {
     //TODO: authenticate
     console.log("go to index, roomId: ", roomId)
-    router.replace({
-      pathname: '/',
-      params: {roomId: roomId},
-    });
+    login(roomId, username, optToken,
+      () => {
+        router.replace({
+          pathname: '/',
+          params: { roomId: roomId },
+        });
+      },
+      () => {
+        setBorderColor('red')
+        shakeOptToken()
+        setTimeout(() => {
+          setOptToken('')
+          setBorderColor('lightgray')
+        }, 600)
+      }
+    )
+    
+  }
+
+  const shakeOptToken = () => {
+    optTokenX.value = withSequence(
+      withTiming(10, { duration: 100 }),
+      withTiming(-10, { duration: 100 }),
+      withTiming(10, { duration: 100 }),
+      withTiming(0, { duration: 100 }),
+    )
   }
 
   useEffect(() => {
@@ -33,18 +61,20 @@ export default function LoginScreen() {
           isReadOnly={false}
           style={styles.input}
         >
-          <InputField placeholder="Username" />
+          <InputField value={username} placeholder="Username" onChangeText={(text) => {setUsername(text)}} />
         </Input>
-        <Input
-          variant="outline"
-          size="md"
-          isDisabled={false}
-          isInvalid={false}
-          isReadOnly={false}
-          style={styles.input}
-        >
-          <InputField type="password" placeholder="OptToken" />
-        </Input>
+        <Animated.View style={{ transform: [{ translateX: optTokenX }] }}>
+          <Input
+            variant="outline"
+            size="md"
+            isDisabled={false}
+            isInvalid={false}
+            isReadOnly={false}
+            style={[styles.input, { borderColor: borderColor }]}
+          >
+            <InputField value={optToken} type="password" placeholder="OptToken" onChangeText={(text) => { setOptToken(text) }} />
+          </Input>
+        </Animated.View>
         <Input
           variant="outline"
           size="md"
@@ -70,6 +100,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   input: {
-    height: 40
+    height: 40,
+    borderColor: 'lightgray'
   }
 })

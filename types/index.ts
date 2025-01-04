@@ -26,14 +26,15 @@ export type VideoMessage = {
 }
 
 export type AudioMessage = {
-    audio: string
+    audio: string,
+    duration: number
 }
 
 export type Message = {
-    msgId: string,
+    msgId: number,
     senderId: string,
-    content: TextMessage | ImageMessage | VideoMessage | AudioMessage,
-    uuid: string,
+    content: string | TextMessage | ImageMessage | VideoMessage | AudioMessage,
+    uuid: number,
     type: MessageType,
     state: MessageState,
     roomId: string,

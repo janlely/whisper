@@ -1,6 +1,6 @@
 import { Dimensions, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from "expo-router";
-import Animated, { clamp, useSharedValue } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { FlashList } from "@shopify/flash-list";
 import { useEffect, useRef, useState } from "react";
 import { getImagesMessages} from "@/storage"
@@ -9,7 +9,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('screen');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function ImagesScreen() {
   const { roomId, uuid } = useLocalSearchParams<{ roomId: string, uuid: string }>();
   const [images, setImages] = useState<string[]>([])
@@ -28,7 +28,7 @@ export default function ImagesScreen() {
           console.log("img: ", imgMsg.img)
           return imgMsg.img
         }))
-        const index = msges.findIndex(msg => msg.uuid === uuid)
+        const index = msges.findIndex(msg => msg.uuid === Number(uuid))
         console.log("index: ", index)
         setInitIndex(index)
       }).catch(e => console.error(e))
