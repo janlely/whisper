@@ -9,7 +9,7 @@ const SELECT_STRING = `
 `
 async function getDB(): Promise<SQLite.SQLiteDatabase> {
   if (!db) {
-    db = await SQLite.openDatabaseAsync('testDB8');
+    db = await SQLite.openDatabaseAsync('whisperDB');
     await migrateDbIfNeeded(db)
   }
   return db!
