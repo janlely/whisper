@@ -259,7 +259,7 @@ export default function ChatScreen() {
       return msg
     }))
     await Storage.saveMessages(newMessages)
-    updateMessages(pre => [...newMessages, ...pre])
+    updateMessages(pre => [...(newMessages.reverse()), ...pre])
   }
   const syncMessage = async () => {
     console.log('syart sync message')
@@ -305,6 +305,7 @@ export default function ChatScreen() {
     })
     Net.connect(roomId, () => {
       console.log("connected")
+      syncMessage()
     }, (msg: string) => {
       if (msg === "notify") {
         syncMessage()

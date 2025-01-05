@@ -21,8 +21,9 @@ export default function LoginScreen() {
     //TODO: authenticate
     console.log("go to index, roomId: ", roomId)
     login(roomId, username, optToken,
-      async () => {
+      async (imgApiKey) => {
         await Storage.setValue('username', username)
+        await Storage.setValue('imgApiKey', imgApiKey)
         router.replace({
           pathname: '/',
           params: { roomId: roomId },

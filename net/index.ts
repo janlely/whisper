@@ -1,6 +1,7 @@
 import { Message, MessageState } from "@/types";
 import axios, { Axios } from 'axios';
 import * as FileSystem from "expo-file-system"
+import * as Storage from '@/storage';
 
 
 let wsClient: WebSocket
@@ -121,7 +122,7 @@ export async function downloadFile(url: string, roomId: string): Promise<string>
 }
 
 
-export function login(roomId: string, username: string, optToken: string, onSuccess: () => void, onerror: () => void) {
+export function login(roomId: string, username: string, optToken: string, onSuccess: (apiKey: string) => void, onerror: () => void) {
   getAxiosCli().post("/api/login", {
     username: username,
     roomId: roomId,
@@ -131,7 +132,7 @@ export function login(roomId: string, username: string, optToken: string, onSucc
       console.log("response status: ", res.status)
       onerror()
     } else {
-      onSuccess()
+      onSuccess(res.data.imgApiKey)
     }
   }).catch(e => {
     console.log("error: ", e.message)
@@ -148,6 +149,35 @@ function getAxiosCli() {
     })
   }
   return axiosCli
+}
+
+export async function uploadToImgBB(uri: string, uploadProgress?: (progress: number) => void): Promise<string> {
+  const imgApiKey = await Storage.getValue('imgApiKey')
+  console.log(`apiKey: `, imgApiKey)
+  const uploadTask = FileSystem.createUploadTask('https://api.imgbb.com/1/upload', uri, {
+    fieldName: 'file',
+    httpMethod: 'POST',
+    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+    parameters: {
+      "expiration": "604800",
+      "key": imgApiKey! 
+    },
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      'Accept': 'application/json'
+    }
+  }, ({ totalBytesSent, totalBytesExpectedToSend }) => {
+    const progress = parseFloat((totalBytesSent / (totalBytesExpectedToSend || 1)).toFixed(2));
+    uploadProgress?.(progress)
+  });
+
+  return uploadTask.uploadAsync().then(res => {
+    console.log('result body: ', res?.body)
+    return JSON.parse(res!.body).data.url
+  }).catch(e => {
+    console.log('upload error: ', e)
+    throw new Error("上传失败")
+  })
 }
 
 export async function uploadFile(uri: string, uploadProgress?: (progress: number) => void): Promise<string> {
