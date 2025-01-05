@@ -2,7 +2,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
-import React from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Message, MessageType, MessageState, AudioMessage, ImageMessage } from '@/types';
 import MessageItem from '@/components/message/MessageItem';
@@ -17,12 +17,13 @@ import { Keyboard } from 'react-native';
 import {saveMessage} from '@/storage'
 import { resizeImageWithAspectRatio, uniqueByProperty } from '@/utils'
 import * as FileSystem from "expo-file-system"
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useRootNavigationState, useLocalSearchParams } from 'expo-router';
 import * as Storage from '@/storage';
 import { Audio } from 'expo-av';
 import { Recording } from 'expo-av/build/Audio';
 import * as Net from '@/net'
 import { FlashList } from '@shopify/flash-list';
+
 
 type UpdateMessages = {
   // 重载签名 1：接受一个 Message[]，表示直接传递新的消息列表
@@ -34,7 +35,7 @@ type UpdateMessages = {
 
 
 export default function ChatScreen() {
-  const { roomId }  = useLocalSearchParams<{ roomId: string }>();
+  const { roomId, isLogedIn }  = useLocalSearchParams<{ roomId: string, isLogedIn: string }>();
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [inputing, setInputing] = React.useState(false);
   const [inputText, setInputText] = React.useState('');
@@ -42,6 +43,7 @@ export default function ChatScreen() {
   const [openEmojiPicker, setOpenEmojiPicker] = React.useState(false);
   const [speaking, setSpeaking] = React.useState(false);
   const navigation = useNavigation();
+  const rootNavigationState = useRootNavigationState();
   const msgListRef = React.useRef<FlashList<Message>>(null)
   const [permissionResponse, requestPermission] = Audio.usePermissions();
   const [audioRecording, setAudioRecording] = React.useState<Recording>()
@@ -49,6 +51,17 @@ export default function ChatScreen() {
   const messagesRef = React.useRef<Message[]>([]);  // 创建 messages 的引用
   const usernameRef = React.useRef<string>('')
 
+
+  const logout = () => {
+    if (!rootNavigationState?.key) {
+      setTimeout(() => {
+        logout()
+      }, 500)
+    } else {
+      Net.disconnect()
+      router.replace({ pathname: '/login', params: { isLogout: 'true' } })
+    }
+  }
   const updateMessages: UpdateMessages = (input)  => {
     if (typeof input === 'function') {
       messagesRef.current = uniqueByProperty(input(messagesRef.current), item => item.senderId + item.msgId);
@@ -147,7 +160,7 @@ export default function ChatScreen() {
         })
       },
       () => {
-        router.replace('/login')
+        logout()
       },
       () => {
         Storage.failed(roomId, msg.msgId).then(() => {
@@ -253,9 +266,12 @@ export default function ChatScreen() {
     //图片，视频下载缩略图
     const newMessages = await Promise.all(msgs.map(async msg => {
       if (msg.type === MessageType.IMAGE || msg.type === MessageType.VIDEO) {
+        console.log(`start download file: ${(msg.content as { thumbnail: string }).thumbnail}`)
         const fileUrl = await Net.downloadFile((msg.content as { thumbnail: string }).thumbnail, roomId)
+        console.log(`download and save file to : ${fileUrl}`)
         return { ...msg, content: { ...(msg.content as object), thumbnail: fileUrl } } as Message
       }
+      console.log(`not image or video: ${msg.type}`)
       return msg
     }))
     await Storage.saveMessages(newMessages)
@@ -267,15 +283,16 @@ export default function ChatScreen() {
       let msgUUID: number = 0
       let direction: "before" | "after" = "before"
       let tillNoMore = false
-      const msgs: Message[] = await Storage.getMessages(roomId, 'before', 1)
-      if (msgs.length > 0) {
-        msgUUID = msgs[0].uuid
+      const lastReveivedUUID: number = await Storage.getLastReceivedMessageUUID(roomId)
+      console.log(`lastReveivedUUID: ${lastReveivedUUID}`)
+      if (lastReveivedUUID > 0) {
+        msgUUID = lastReveivedUUID 
         direction = "after"
         tillNoMore = true
       }
       Net.pullMessage(roomId, msgUUID, direction, tillNoMore, onMessagePulled,
       () => {
-        router.replace('/login')
+        logout()
       }, (e) => {
         console.log("pull message failed: ", e)
       })
@@ -283,13 +300,18 @@ export default function ChatScreen() {
       console.log("pullMessage error: ", error)
     }
   }
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!isLogedIn) {
+      console.log(`isLoginId: ${isLogedIn}`)
+      logout()
+      return
+    }
     navigation.setOptions({
       headerTitle: roomId,
     })
     Storage.getValue('username').then(username => {
       if (!username) {
-        router.replace('/login')
+        logout()
         return
       }
       usernameRef.current = username!
@@ -303,6 +325,7 @@ export default function ChatScreen() {
     }).catch(e => {
       console.log("syncMessage error: ", e)
     })
+    console.log(`connect to room: ${roomId}`)
     Net.connect(roomId, () => {
       console.log("connected")
       syncMessage()
@@ -311,7 +334,7 @@ export default function ChatScreen() {
         syncMessage()
       }
     }, () => {
-      router.replace('/login')
+      logout()
     })
   }, [])
 

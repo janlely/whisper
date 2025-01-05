@@ -8,30 +8,60 @@ import { ImageMessage } from "@/types";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import * as Storage from '@/storage'
+import * as Net from '@/net'
 
+type ImageUrl = {
+  thumbnail: string,
+  uri: string
+}
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function ImagesScreen() {
   const { roomId, uuid } = useLocalSearchParams<{ roomId: string, uuid: string }>();
-  const [images, setImages] = useState<string[]>([])
+  const [images, setImages] = useState<ImageUrl[]>([])
   const [initIndex, setInitIndex] = useState(0)
-  const viewRef = useRef<FlashList<string>>(null)
+  const viewRef = useRef<FlashList<ImageUrl>>(null)
 
+  
 
   useEffect(() => {
     console.log("got roomId: ", roomId)
     console.log("got uuid: ", uuid)
     getImagesMessages(roomId)
       .then(msges => {
-        console.log("got msges: ", msges.length)
+        console.log("got msges: ", msges)
         setImages(msges.map(msg => {
           const imgMsg = msg.content as ImageMessage
           console.log("img: ", imgMsg.img)
-          return imgMsg.img
+          return {
+            thumbnail: imgMsg.thumbnail,
+            uri: imgMsg.img
+          }
         }))
         const index = msges.findIndex(msg => msg.uuid === Number(uuid))
         console.log("index: ", index)
         setInitIndex(index)
-      }).catch(e => console.error(e))
+        console.log("downloading  images")
+        Promise.all(msges.map(async msg => {
+          //如果原图没下载，先下载原图
+          const messageContent = msg.content as ImageMessage
+          if ((msg.content as ImageMessage).img.startsWith('http')) {
+            const fileUrl = await Net.downloadFile(messageContent.img, roomId)
+            await Storage.updateContent(roomId, msg.uuid, { ...(msg.content as ImageMessage), img: fileUrl })
+            console.log("image downloaded, fileUrl: ", fileUrl)
+            return {
+              thumbnail: messageContent.thumbnail,
+              uri: fileUrl 
+            }
+          } else {
+            return {
+              thumbnail: messageContent.thumbnail,
+              uri: messageContent.img 
+            }
+          }
+        })).then((imgs) => setImages(imgs))
+        .catch(e => console.error('download image error: ',e))
+      }).catch(e => console.error('get images error', e))
   }, [])
 
   useEffect(() => {
@@ -41,12 +71,12 @@ export default function ImagesScreen() {
     }
   }, [images, initIndex])
 
-  const renderItem = ({ item }: { item: string }) => {
+  const renderItem = ({ item }: { item: ImageUrl}) => {
     console.log('item: ', item)
     return (
       <Image
         style={styles.image}
-        source={{ uri: item }}
+        source={item.uri.startsWith('http') ? { uri: item.thumbnail } : { uri: item.uri }}
         contentFit='contain'
       />
     )

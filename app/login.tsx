@@ -8,6 +8,8 @@ import React, { useEffect } from "react";
 import {login} from '@/net'
 import Animated, { useSharedValue, withSequence, withTiming } from "react-native-reanimated";
 import * as Storage from '@/storage'
+import * as Net from '@/net'
+// import { CommonActions } from "@react-navigation/native";
 
 export default function LoginScreen() {
 
@@ -15,26 +17,60 @@ export default function LoginScreen() {
   const [username, setUsername] = React.useState('');
   const [optToken, setOptToken] = React.useState('');
   const optTokenX = useSharedValue(0)
-  const [borderColor, setBorderColor] = React.useState('lightgray')
+  const roomIdX = useSharedValue(0)
+  const usernameX = useSharedValue(0)
+  const [optTokenBorderColor, setOptTokenBorderColor] = React.useState('lightgray')
+  const [roomIdBorderColor, setRoomIdBorderColor] = React.useState('lightgray')
+  const [usernameBorderColor, setUsernameBorderColor] = React.useState('lightgray')
+  // const navigation = useNavigation()
+  // const { isLogout }  = useLocalSearchParams<{ isLogout: string }>();
 
   const handleOnPress = () => {
-    //TODO: authenticate
+    if (!username) {
+      setUsernameBorderColor('red')
+      shakeUsername()
+      setTimeout(() => {
+        setUsernameBorderColor('lightgray')
+      }, 600)
+      return
+    }
+
+    if (!optToken) {
+      setOptTokenBorderColor('red')
+      shakeOptToken()
+      setTimeout(() => {
+        setOptTokenBorderColor('lightgray')
+      }, 600)
+      return
+    }
+
+    if (!roomId) {
+      setRoomIdBorderColor('red')
+      shakeRoomId()
+      setTimeout(() => {
+        setRoomIdBorderColor('lightgray')
+      }, 600)
+      return
+    }
+
+
     console.log("go to index, roomId: ", roomId)
     login(roomId, username, optToken,
       async (imgApiKey) => {
         await Storage.setValue('username', username)
         await Storage.setValue('imgApiKey', imgApiKey)
+        await Storage.setValue('lastLoginRoom', roomId)
         router.replace({
           pathname: '/',
-          params: { roomId: roomId },
+          params: { roomId: roomId, isLogedIn: 'true' },
         });
       },
       () => {
-        setBorderColor('red')
+        setOptTokenBorderColor('red')
         shakeOptToken()
         setTimeout(() => {
           setOptToken('')
-          setBorderColor('lightgray')
+          setOptTokenBorderColor('lightgray')
         }, 600)
       }
     )
@@ -50,22 +86,47 @@ export default function LoginScreen() {
     )
   }
 
+  const shakeUsername = () => {
+    usernameX.value = withSequence(
+      withTiming(10, { duration: 100 }),
+      withTiming(-10, { duration: 100 }),
+      withTiming(10, { duration: 100 }),
+      withTiming(0, { duration: 100 }),
+    )
+  }
+
+  const shakeRoomId = () => {
+    roomIdX.value = withSequence(
+      withTiming(10, { duration: 100 }),
+      withTiming(-10, { duration: 100 }),
+      withTiming(10, { duration: 100 }),
+      withTiming(0, { duration: 100 }),
+    )
+  }
   useEffect(() => {
-    setRoomId('好好学习')
+    Net.disconnect()
+    Storage.getValue('lastLoginRoom').then((value) => {
+      setRoomId(value ?? '好好学习')
+    }).catch((error) => {
+      console.log('lastLoginRoom error: ', error)
+      setRoomId('好好学习')
+    })
   }, [])
   return (
     <Center style={{ width: '100%', height: '100%' }}>
       <VStack space="md" style={{ width: '55%' }}>
-        <Input
-          variant="outline"
-          size="md"
-          isDisabled={false}
-          isInvalid={false}
-          isReadOnly={false}
-          style={styles.input}
-        >
-          <InputField value={username} placeholder="Username" onChangeText={(text) => {setUsername(text)}} />
-        </Input>
+        <Animated.View style={{ transform: [{ translateX: usernameX }] }}>
+          <Input
+            variant="outline"
+            size="md"
+            isDisabled={false}
+            isInvalid={false}
+            isReadOnly={false}
+            style={[styles.input, { borderColor: usernameBorderColor}]}
+          >
+            <InputField value={username} placeholder="Username" onChangeText={(text) => { setUsername(text) }} />
+          </Input>
+        </Animated.View>
         <Animated.View style={{ transform: [{ translateX: optTokenX }] }}>
           <Input
             variant="outline"
@@ -73,21 +134,23 @@ export default function LoginScreen() {
             isDisabled={false}
             isInvalid={false}
             isReadOnly={false}
-            style={[styles.input, { borderColor: borderColor }]}
+            style={[styles.input, { borderColor: optTokenBorderColor}]}
           >
             <InputField value={optToken} type="password" placeholder="OptToken" onChangeText={(text) => { setOptToken(text) }} />
           </Input>
         </Animated.View>
-        <Input
-          variant="outline"
-          size="md"
-          isDisabled={false}
-          isInvalid={false}
-          isReadOnly={false}
-          style={styles.input}
-        >
-          <InputField value={roomId} onChangeText={(text) => {setRoomId(text)}} />
-        </Input>
+        <Animated.View style={{ transform: [{ translateX: roomIdX }] }}>
+          <Input
+            variant="outline"
+            size="md"
+            isDisabled={false}
+            isInvalid={false}
+            isReadOnly={false}
+            style={[styles.input, { borderColor: roomIdBorderColor}]}
+          >
+            <InputField value={roomId} onChangeText={(text) => { setRoomId(text) }} />
+          </Input>
+        </Animated.View>
         <Button
           className="ml-auto w-full"
           onPress={handleOnPress}

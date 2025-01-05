@@ -3,24 +3,34 @@ import axios, { Axios } from 'axios';
 import * as FileSystem from "expo-file-system"
 import * as Storage from '@/storage';
 
-
-let wsClient: WebSocket
+let wsClient: WebSocket | undefined
 let axiosCli: Axios | undefined
 const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
+export const disconnect = () => {
+  if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+    console.log('close socket connection')
+    wsClient.close(1000, 'logout')
+  }
+}
 export const connect = (roomId: string, onopen: () => void, onmessage: (_: string) => void, onclose: () => void) => {
+  console.log(`connect to ${roomId}`)
   wsClient = new WebSocket(`${baseUrl}/chat-ws?${roomId}`);
 
   wsClient.onopen = () => {
     console.log("WebSocket connected");
-    // refreshMembers()
     onopen()
   };
 
   wsClient.onclose = (e) => {
-    console.log(`WebSocket disconnected, code: ${e.code}`);
+    console.log(`WebSocket disconnected, code: ${e.code}, ${e.reason}`);
     if (e.code === 3401) {
       onclose()
     } else {
+      if (e.code === 1000 && e.reason === 'logout') {
+        console.log('logout')
+        wsClient = undefined
+        return
+      }
       setTimeout(() => {
         connect(roomId, onopen, onmessage, onclose)
       }, 1000);
@@ -113,10 +123,24 @@ export function pullMessage(
 }
 
 export async function downloadFile(url: string, roomId: string): Promise<string> {
-  const fileUrl = FileSystem.cacheDirectory + `/${roomId}/${Date.now().toString()}_thumbnial.png`
+  const dir = FileSystem.cacheDirectory + `/${roomId}`
+  const info = await FileSystem.getInfoAsync(dir)
+  if (info.exists && !info.isDirectory) {
+    throw new Error("dir不是一个目录")
+  }
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(dir)
+  }
+  const fileName = url.split("/").pop()
+  const fileUrl = `${dir}/${Date.now().toString()}_${fileName}`
+  console.log(`location to save file: ${fileUrl}`) 
   return FileSystem.downloadAsync(url, fileUrl)
-  .then(() => fileUrl)
+  .then(() => {
+    console.log('download success')
+    return fileUrl
+  })
   .catch(e => {
+    console.log('download failed: ', e)
     throw new Error("下载失败")
   })
 }

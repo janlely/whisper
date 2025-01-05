@@ -15,7 +15,7 @@ import * as Storgage from '@/storage'
 
 type MessageItemProps = {
     msg: Message,
-    retry: (_: Message) => void
+    retry: (_: Message) => void,
 }
 export default function MessageItem({ msg, retry }: MessageItemProps) {
 
@@ -76,9 +76,9 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
 type MessageUnitProps = {
   style?: any,
   msg: Message,
-  direction?: 'left' | 'right'
+  direction?: 'left' | 'right',
 }
-function MessageUnit({msg, style, direction}: MessageUnitProps) {
+function MessageUnit({msg, style, direction }: MessageUnitProps) {
 
   const [playing, setPlaying] = React.useState(false)
   const sound = React.useRef<Sound>()
@@ -86,11 +86,6 @@ function MessageUnit({msg, style, direction}: MessageUnitProps) {
   const goToImageViewer = async (roomId: string, uuid: number) => {
     console.log("roomId: ", roomId)
     console.log("uuid: ", uuid)
-    //如果原图没下载，先下载原图
-    if ((msg.content as ImageMessage).img.startsWith('http')) {
-      const fileUrl =  await Net.downloadFile((msg.content as ImageMessage).img, roomId)
-      await Storgage.updateContent(roomId, uuid, { ...(msg.content as ImageMessage), img: fileUrl })
-    }
     router.push({
       pathname: '/imageviewer',
       params: { roomId, uuid },

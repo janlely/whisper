@@ -87,6 +87,19 @@ export async function updateUUID(id: number, uuid: number) {
     `, [uuid, id])
 }
 
+export async function getLastReceivedMessageUUID(roomId: string): Promise<number> {
+  const db = await getDB();
+  let uuids: { uuid: number }[] 
+  uuids = await db.getAllAsync(`
+    SELECT uuid FROM messages
+    WHERE room_id = ?
+    AND is_sender = 0
+    ORDER BY uuid DESC
+    LIMIT 1
+    `, [roomId])
+  return uuids.length > 0 ? uuids[0].uuid : 0
+}
+
 export async function getMessages(roomId: string, direction: "before" | "after", limit: number, uuid?: number): Promise<Message[]> {
   
   const db = await getDB();

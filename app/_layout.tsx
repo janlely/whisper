@@ -6,9 +6,8 @@ import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-
+import * as Net from '@/net';
 import { GestureHandlerRootView, Pressable } from 'react-native-gesture-handler';
-import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react-native';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -59,7 +58,10 @@ export default function RootLayout() {
             options={{
               headerShown: true,
               headerRight: () => (
-                <Pressable onPress={() => router.replace('/login')}>
+                <Pressable onPress={() => {
+                  Net.disconnect()
+                  router.replace({ pathname: '/login', params: { isLogout: 'true' } })
+                }}>
                   <LogOut style={{ marginRight: 10, width: 24, height: 24 }} color={'black'} />
                 </Pressable>
               ),
