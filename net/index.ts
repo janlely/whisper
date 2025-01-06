@@ -122,7 +122,8 @@ export function syncMessages(
       },
       send: boolean,
       success: boolean,
-      uuid: number
+      uuid: number,
+      avatar: string
     }[] = res.data
     console.log("receivedMessages: ", receivedMessages)
     onSuccess(receivedMessages.map(m => ({
@@ -134,6 +135,7 @@ export function syncMessages(
       state: MessageState.SUCCESS,
       roomId: roomId,
       isSender: false,
+      avatar: m.avatar
     })))
 
   }).catch(e => {
@@ -194,7 +196,12 @@ export function pullMessage(
   })
 }
 
-export async function downloadFile(url: string, roomId: string): Promise<string> {
+async function fileExist(fileUrl: string): Promise<boolean> {
+  const info = await FileSystem.getInfoAsync(fileUrl)
+  return info.exists
+}
+
+export async function downloadFile(url: string, roomId: string, tag?: string): Promise<string> {
   const dir = FileSystem.cacheDirectory + `/${roomId}`
   const info = await FileSystem.getInfoAsync(dir)
   if (info.exists && !info.isDirectory) {
@@ -204,7 +211,10 @@ export async function downloadFile(url: string, roomId: string): Promise<string>
     await FileSystem.makeDirectoryAsync(dir)
   }
   const fileName = url.split("/").pop()
-  const fileUrl = `${dir}/${Date.now().toString()}_${fileName}`
+  const fileUrl = tag ? `${dir}/${tag}_${fileName}` : `${dir}/${Date.now().toString()}_${fileName}`
+  if (await fileExist(fileUrl)) {
+    return fileUrl
+  }
   console.log(`location to save file: ${fileUrl}`) 
   return FileSystem.downloadAsync(url, fileUrl)
   .then(() => {
@@ -218,7 +228,7 @@ export async function downloadFile(url: string, roomId: string): Promise<string>
 }
 
 
-export function login(roomId: string, username: string, optToken: string, onSuccess: (apiKey: string) => void, onerror: () => void) {
+export function login(roomId: string, username: string, optToken: string, onSuccess: (apiKey: string, avatar: string) => void, onerror: () => void) {
   getAxiosCli().post("/api/login", {
     username: username,
     roomId: roomId,
@@ -228,7 +238,7 @@ export function login(roomId: string, username: string, optToken: string, onSucc
       console.log("response status: ", res.status)
       onerror()
     } else {
-      onSuccess(res.data.imgApiKey)
+      onSuccess(res.data.imgApiKey, res.data.avatar)
     }
   }).catch(e => {
     console.log("error: ", e.message)

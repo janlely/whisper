@@ -57,11 +57,13 @@ export default function LoginScreen() {
 
     console.log('try login')
     login(roomId, username, optToken,
-      async (imgApiKey) => {
+      async (imgApiKey, avatar) => {
         console.log("go to index, roomId: ", roomId)
         await Storage.setValue('username', username)
         await Storage.setValue('imgApiKey', imgApiKey)
         await Storage.setValue('lastLoginRoom', roomId)
+        await Storage.setAvatar(username, avatar)
+        
         setIsLoading(false)
         router.replace({
           pathname: '/',

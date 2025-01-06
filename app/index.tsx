@@ -61,14 +61,39 @@ export default function ChatScreen() {
       router.replace({ pathname: '/login', params: { isLogout: 'true' } })
     }
   }
-  const updateMessages: UpdateMessages = (input)  => {
-    if (typeof input === 'function') {
-      messagesRef.current = uniqueByProperty(input(messagesRef.current), item => item.senderId + item.msgId);
-      setMessages(messagesRef.current)
-    } else {
-      messagesRef.current = uniqueByProperty(input, item => item.senderId + item.msgId);;
-      setMessages(messagesRef.current)
+
+  const addAvatar = async (messages: Message[]) => {
+    try {
+      const avatarMap = new Map<string, string>()
+      for (const msg of messages) {
+        if (msg.avatar && msg.avatar.startsWith('http')) {
+          avatarMap.set(msg.senderId, msg.avatar)
+        }
+      }
+      for (const entry of avatarMap.entries()) {
+        const avatar = await Storage.setAvatar(entry[0], entry[1])
+        avatarMap.set(entry[0], avatar)
+      }
+      return Promise.all(messages.map(async msg => {
+        if (msg.avatar && msg.avatar.startsWith('http')) {
+          msg.avatar = avatarMap.get(msg.senderId)
+        } else {
+          msg.avatar = await Storage.getAvatar(msg.senderId)
+        }
+        return msg
+      }))
+    } catch (error) {
+      console.log('error: ', error)
+      return []
     }
+  }
+  const updateMessages: UpdateMessages = async (input)  => {
+    if (typeof input === 'function') {
+      messagesRef.current = await addAvatar(uniqueByProperty(input(messagesRef.current), item => item.senderId + item.msgId))
+    } else {
+      messagesRef.current = await addAvatar(uniqueByProperty(input, item => item.senderId + item.msgId))
+    }
+    setMessages(messagesRef.current)
   }
     
   const handleOnChange = (text: string) => {
@@ -119,7 +144,7 @@ export default function ChatScreen() {
 
   }
 
-  const handleSend = () => {
+  const handleSend = async () => {
     setInputing(false)
     const message = {
       msgId: Date.now(),
@@ -129,7 +154,7 @@ export default function ChatScreen() {
       uuid: Date.now(),
       state: MessageState.SENDING,
       isSender: true,
-      roomId: roomId
+      roomId: roomId,
     }
     setInputText("")
     updateMessages(pre => [message, ...pre])
@@ -286,8 +311,13 @@ export default function ChatScreen() {
   }
 
   const getLocalMessages = async () => {
-    const messages = await Storage.getMessages(roomId, "before", 100)
-    updateMessages(messages)
+    try {
+      const messages = await Storage.getMessages(roomId, "before", 100)
+      console.log('getMessages: ', messages)
+      updateMessages(messages)
+    } catch (error) {
+      console.log('error: ', error)
+    }
   }
 
   const syncMessages = async () => {
@@ -374,7 +404,7 @@ export default function ChatScreen() {
   }
 
   const flatListItemRender = ({ item }: {item: Message}) => {
-    console.log('render: ', item.content)
+    console.log('render: ', item)
     return <MessageItem msg={item} retry={retry}/>
   }
 

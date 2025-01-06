@@ -1,7 +1,9 @@
 import { Message } from '@/types';
 import * as SQLite from 'expo-sqlite';
+import * as Net from '@/net';
 
 let db: SQLite.SQLiteDatabase | undefined;
+const avatarMap = new Map<string, string>();
 
 const SELECT_STRING = `
     SELECT username as senderId, room_id as roomId, type, content, msg_id as msgId, uuid, state, is_sender as isSender
@@ -18,6 +20,9 @@ async function getDB(): Promise<SQLite.SQLiteDatabase> {
 export async function getValue(key: string): Promise<string | null> {
   const db = await getDB();
   const row: {value: string} | null = await db.getFirstAsync(`SELECT value FROM kv WHERE key = ?`, [key])
+  if (!row) { 
+    console.log(`no key: ${key}`)
+  }
   return row!.value
 }
 
@@ -132,11 +137,16 @@ export async function getMessages(roomId: string, direction: "before" | "after",
     console.log('rows3: ', rows)
   }
 
-  console.log('getMessages: ', rows)
-  return rows.map(row => {
+  return Promise.all(rows.map(async row => {
     const msg = JSON.parse(row.content as string)
-    return {...row, content: msg}
-  })
+    try {
+      const avatar = await getAvatar(row.senderId)
+      return { ...row, content: msg, avatar: avatar }
+    } catch (error) {
+      console.log('error get avatar for: ', row.senderId, error)
+      throw error
+    }
+  }))
 }
 
 
@@ -192,3 +202,26 @@ async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
   }
 }
 
+
+export async function setAvatar(username: string, avatar: string): Promise<string> {
+  if (avatar.startsWith('http')) {
+    const avatarUrl = await Net.downloadFile(avatar, "avatar", "avatar")
+    await setValue(`avatar_${username}`, avatarUrl)
+    avatarMap.set(username, avatarUrl)
+    return avatarUrl
+  }
+  return avatar
+}
+
+
+export async function getAvatar(username: string): Promise<string> {
+  if (avatarMap.has(username)) {
+    return avatarMap.get(username)!
+  }
+  const avatar = await getValue(`avatar_${username}`)
+  if (!avatar) {
+    return ''
+  }
+  avatarMap.set(username, avatar)
+  return avatar
+}

@@ -10,8 +10,6 @@ import AudioAnimatedIcon from "./AudioAnimatedIcon";
 import { Audio } from 'expo-av';
 import { Sound } from "expo-av/build/Audio";
 import { RotateCcw } from "lucide-react-native";
-import * as Net from '@/net'
-import * as Storgage from '@/storage'
 
 type MessageItemProps = {
     msg: Message,
@@ -34,13 +32,12 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
     <HStack space='md' style={[{ alignItems: 'center' }, styles.container]}>
       <Avatar
         rounded={false}
-        title={msg.senderId.substring(0, 3)}
-        size={40}
+        size={36}
+        source={{ uri: msg.avatar }}
         containerStyle={{ backgroundColor: 'lightgreen', borderRadius: 10 }}
       />
       <Center style={{
         backgroundColor: 'white',
-        // width: '60%',
         maxWidth: '60%',
         padding: 10,
         borderRadius: 10
@@ -57,7 +54,6 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
       }
       <Center style={{
         backgroundColor: 'white',
-        // width: '60%',
         maxWidth: '60%',
         padding: 10,
         borderRadius: 10
@@ -66,8 +62,8 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
       </Center>
       <Avatar
         rounded={false}
-        title={msg.senderId.substring(0, 3)}
-        size={40}
+        size={36}
+        source={{ uri: msg.avatar }}
         containerStyle={{ backgroundColor: 'lightgreen', borderRadius: 10 }}
       />
     </HStack>
