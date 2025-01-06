@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
@@ -22,6 +22,7 @@ import { Audio } from 'expo-av';
 import { Recording } from 'expo-av/build/Audio';
 import * as Net from '@/net'
 import { FlashList } from '@shopify/flash-list';
+import { OnlineLight } from '@/components/message/online';
 
 
 type UpdateMessages = {
@@ -50,7 +51,8 @@ export default function ChatScreen() {
   const messagesRef = React.useRef<Message[]>([]);  // 创建 messages 的引用
   const usernameRef = React.useRef<string>('')
   const connectExpire = React.useRef<number>(0) 
-  const [isAlive, setIsAlive] = React.useState(false)
+  // const [connectExpire, setConnectExpire] = React.useState(0)
+  // const [isAlive, setIsAlive] = React.useState(false)
   const pingTaskRef = React.useRef<NodeJS.Timeout | null>(null)
 
 
@@ -304,7 +306,7 @@ export default function ChatScreen() {
     navigation.setOptions({
       headerTitle: roomId,
       headerLeft: () => (
-        <View style={[styles.connectState, { backgroundColor: isAlive ? 'green' : 'gray'}]}/>
+        <OnlineLight getExpire={() => connectExpire.current}/>
       )
     })
   }, [navigation])
@@ -317,18 +319,6 @@ export default function ChatScreen() {
       Net.ping()
     }, 15000)
   }
-
-  const checkAlive = () => {
-    console.log(`expire: ${connectExpire.current}, now: ${Date.now()}`)
-    if (connectExpire.current > Date.now()) {
-      setIsAlive(true)
-    } else {
-      setIsAlive(false)
-    }
-  }
-  useEffect(() => {
-    console.log('isAlive changed to:', isAlive);
-  }, [isAlive]);
 
   useEffect(() => {
     if (!isLogedIn) {
@@ -351,6 +341,7 @@ export default function ChatScreen() {
     console.log(`connect to room: ${roomId}`)
     Net.connect(roomId, () => {
       console.log("connected")
+      connectExpire.current = Date.now() + 30000
       pingEvery15Seconds()
       syncMessages()
     }, (msg: string) => {
@@ -510,10 +501,5 @@ const styles = StyleSheet.create({
   emojiKeyboard: {
     width: '100%',
     height: 300 
-  },
-  connectState: {
-    height: 24,
-    width: 24,
-    borderRadius: '50%',
   }
 });
