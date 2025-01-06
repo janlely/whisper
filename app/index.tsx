@@ -1,9 +1,8 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
-import React, { useEffect, useLayoutEffect } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect } from 'react';
 import { Message, MessageType, MessageState, AudioMessage, ImageMessage } from '@/types';
 import MessageItem from '@/components/message/MessageItem';
 import { Input, InputField } from '@/components/ui/input';
@@ -17,7 +16,7 @@ import { Keyboard } from 'react-native';
 import {saveMessage} from '@/storage'
 import { resizeImageWithAspectRatio, uniqueByProperty } from '@/utils'
 import * as FileSystem from "expo-file-system"
-import { router, useRootNavigationState, useLocalSearchParams } from 'expo-router';
+import { router, useNavigation, useRootNavigationState, useLocalSearchParams } from 'expo-router';
 import * as Storage from '@/storage';
 import { Audio } from 'expo-av';
 import { Recording } from 'expo-av/build/Audio';
@@ -50,6 +49,9 @@ export default function ChatScreen() {
   const recordDuration = React.useRef(0)
   const messagesRef = React.useRef<Message[]>([]);  // 创建 messages 的引用
   const usernameRef = React.useRef<string>('')
+  const connectExpire = React.useRef<number>(0) 
+  const [isAlive, setIsAlive] = React.useState(false)
+  const pingTaskRef = React.useRef<NodeJS.Timeout | null>(null)
 
 
   const logout = () => {
@@ -286,6 +288,11 @@ export default function ChatScreen() {
     }
   }
 
+  const getLocalMessages = async () => {
+    const messages = await Storage.getMessages(roomId, "before", 100)
+    updateMessages(messages)
+  }
+
   const syncMessages = async () => {
     Net.syncMessages(roomId, onMessagePulled, () => {
       logout()
@@ -293,38 +300,43 @@ export default function ChatScreen() {
       console.log("sync message failed: ", e)
     })
   }
-  // const syncMessage = async () => {
-  //   console.log('syart sync message')
-  //   try {
-  //     let msgUUID: number = 0
-  //     let direction: "before" | "after" = "before"
-  //     let tillNoMore = false
-  //     const lastReveivedUUID: number = await Storage.getLastReceivedMessageUUID(roomId)
-  //     console.log(`lastReveivedUUID: ${lastReveivedUUID}`)
-  //     if (lastReveivedUUID > 0) {
-  //       msgUUID = lastReveivedUUID 
-  //       direction = "after"
-  //       tillNoMore = true
-  //     }
-  //     Net.pullMessage(roomId, msgUUID, direction, tillNoMore, onMessagePulled,
-  //     () => {
-  //       logout()
-  //     }, (e) => {
-  //       console.log("pull message failed: ", e)
-  //     })
-  //   } catch (error) {
-  //     console.log("pullMessage error: ", error)
-  //   }
-  // }
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: roomId,
+      headerLeft: () => (
+        <View style={[styles.connectState, { backgroundColor: isAlive ? 'green' : 'gray'}]}/>
+      )
+    })
+  }, [navigation])
+
+  const pingEvery15Seconds = () => {
+    if (pingTaskRef.current) {
+      clearInterval(pingTaskRef.current)
+    }
+    pingTaskRef.current = setInterval(() => {
+      Net.ping()
+    }, 15000)
+  }
+
+  const checkAlive = () => {
+    console.log(`expire: ${connectExpire.current}, now: ${Date.now()}`)
+    if (connectExpire.current > Date.now()) {
+      setIsAlive(true)
+    } else {
+      setIsAlive(false)
+    }
+  }
+  useEffect(() => {
+    console.log('isAlive changed to:', isAlive);
+  }, [isAlive]);
+
   useEffect(() => {
     if (!isLogedIn) {
       console.log(`isLoginId: ${isLogedIn}`)
       logout()
       return
     }
-    navigation.setOptions({
-      headerTitle: roomId,
-    })
+    // checkAlive()
     Storage.getValue('username').then(username => {
       if (!username) {
         logout()
@@ -332,23 +344,21 @@ export default function ChatScreen() {
       }
       usernameRef.current = username!
     })
+    //显示现有消息
+    getLocalMessages()
     //拉取最新消息
     syncMessages()
-    // syncMessage().then(() => {
-    //   Storage.getMessages(roomId, 'before', 10).then(messages => {
-    //     console.log("messages size: ", messages.length)
-    //     updateMessages(messages)
-    //   })
-    // }).catch(e => {
-    //   console.log("syncMessage error: ", e)
-    // })
     console.log(`connect to room: ${roomId}`)
     Net.connect(roomId, () => {
       console.log("connected")
+      pingEvery15Seconds()
       syncMessages()
     }, (msg: string) => {
       if (msg === "notify") {
         syncMessages()
+      } else if (msg === "pong") {
+        console.log("pong")
+        connectExpire.current = Date.now() + 30000
       }
     }, () => {
       logout()
@@ -500,6 +510,10 @@ const styles = StyleSheet.create({
   emojiKeyboard: {
     width: '100%',
     height: 300 
+  },
+  connectState: {
+    height: 24,
+    width: 24,
+    borderRadius: '50%',
   }
-  
 });

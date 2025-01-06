@@ -12,6 +12,12 @@ export const disconnect = () => {
     wsClient.close(1000, 'logout')
   }
 }
+export const ping = () => {
+  if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+    console.log("ping")
+    wsClient.send('ping')
+  }
+}
 export const connect = (roomId: string, onopen: () => void, onmessage: (_: string) => void, onclose: () => void) => {
   console.log(`connect to ${roomId}`)
   wsClient = new WebSocket(`${baseUrl}/chat-ws?${roomId}`);
