@@ -22,14 +22,11 @@ import { Audio } from 'expo-av';
 import { Recording } from 'expo-av/build/Audio';
 import * as Net from '@/net'
 import { FlashList } from '@shopify/flash-list';
-import { OnlineLight } from '@/components/message/online';
+import { OnlineLight } from '@/components/message/Online';
 
 
 type UpdateMessages = {
-  // 重载签名 1：接受一个 Message[]，表示直接传递新的消息列表
   (newMessages: Message[]): void;
-
-  // 重载签名 2：接受一个 (pre: Message[]) => Message[]，表示通过回调函数更新消息列表
   (updateFn: (pre: Message[]) => Message[]): void;
 };
 
@@ -51,8 +48,6 @@ export default function ChatScreen() {
   const messagesRef = React.useRef<Message[]>([]);  // 创建 messages 的引用
   const usernameRef = React.useRef<string>('')
   const connectExpire = React.useRef<number>(0) 
-  // const [connectExpire, setConnectExpire] = React.useState(0)
-  // const [isAlive, setIsAlive] = React.useState(false)
   const pingTaskRef = React.useRef<NodeJS.Timeout | null>(null)
 
 

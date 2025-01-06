@@ -9,7 +9,6 @@ import {login} from '@/net'
 import Animated, { useSharedValue, withSequence, withTiming } from "react-native-reanimated";
 import * as Storage from '@/storage'
 import * as Net from '@/net'
-// import { CommonActions } from "@react-navigation/native";
 
 export default function LoginScreen() {
 
@@ -22,16 +21,17 @@ export default function LoginScreen() {
   const [optTokenBorderColor, setOptTokenBorderColor] = React.useState('lightgray')
   const [roomIdBorderColor, setRoomIdBorderColor] = React.useState('lightgray')
   const [usernameBorderColor, setUsernameBorderColor] = React.useState('lightgray')
-  // const navigation = useNavigation()
-  // const { isLogout }  = useLocalSearchParams<{ isLogout: string }>();
+  const [isLoading, setIsLoading] = React.useState(false)
 
   const handleOnPress = () => {
+    setIsLoading(true)
     if (!username) {
       setUsernameBorderColor('red')
       shakeUsername()
       setTimeout(() => {
         setUsernameBorderColor('lightgray')
       }, 600)
+      setIsLoading(false)
       return
     }
 
@@ -41,6 +41,7 @@ export default function LoginScreen() {
       setTimeout(() => {
         setOptTokenBorderColor('lightgray')
       }, 600)
+      setIsLoading(false)
       return
     }
 
@@ -50,22 +51,25 @@ export default function LoginScreen() {
       setTimeout(() => {
         setRoomIdBorderColor('lightgray')
       }, 600)
+      setIsLoading(false)
       return
     }
 
-
-    console.log("go to index, roomId: ", roomId)
+    console.log('try login')
     login(roomId, username, optToken,
       async (imgApiKey) => {
+        console.log("go to index, roomId: ", roomId)
         await Storage.setValue('username', username)
         await Storage.setValue('imgApiKey', imgApiKey)
         await Storage.setValue('lastLoginRoom', roomId)
+        setIsLoading(false)
         router.replace({
           pathname: '/',
           params: { roomId: roomId, isLogedIn: 'true' },
         });
       },
       () => {
+        setIsLoading(false)
         setOptTokenBorderColor('red')
         shakeOptToken()
         setTimeout(() => {
@@ -154,6 +158,7 @@ export default function LoginScreen() {
         <Button
           className="ml-auto w-full"
           onPress={handleOnPress}
+          disabled={isLoading}
         >
           <ButtonText className="text-typography-0">登录</ButtonText>
         </Button>
@@ -162,11 +167,9 @@ export default function LoginScreen() {
   )
 }
 
-
-
 const styles = StyleSheet.create({
   input: {
     height: 40,
     borderColor: 'lightgray'
-  }
+  },
 })

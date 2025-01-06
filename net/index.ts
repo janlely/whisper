@@ -20,6 +20,9 @@ export const ping = () => {
 }
 export const connect = (roomId: string, onopen: () => void, onmessage: (_: string) => void, onclose: () => void) => {
   console.log(`connect to ${roomId}`)
+  if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+    return
+  }
   wsClient = new WebSocket(`${baseUrl}/chat-ws?${roomId}`);
 
   wsClient.onopen = () => {

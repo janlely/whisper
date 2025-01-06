@@ -23,7 +23,7 @@ export async function getValue(key: string): Promise<string | null> {
 
 export async function setValue(key: string, value: string) {
   const db = await getDB();
-  await db.runAsync(`INSERT INTO kv (key, value) VALUES(?, ?)`, [key, value])
+  await db.runAsync(`INSERT OR REPLACE INTO kv (key, value) VALUES(?, ?)`, [key, value])
 }
 
 export async function saveMessages(messages: Message[]) {
@@ -186,6 +186,7 @@ async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
       );
       CREATE UNIQUE INDEX 'uniq_rum' ON messages (room_id, username, msg_id);
       CREATE INDEX 'idx_ru' ON messages (room_id, uuid);
+      CREATE UNIQUE INDEX 'idx_k' ON kv (key);
     `);
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
