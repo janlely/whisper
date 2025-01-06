@@ -69,6 +69,69 @@ export function sendMessage(
   })
 }
 
+
+export async function ackMessages(
+  roomId: string,
+  uuid: number
+) {
+  getAxiosCli().get("/api/chat/ack", {
+    params: {
+      uuid: uuid.toString()
+    },
+    headers: {
+      "RoomId": encodeURIComponent(roomId)
+    }
+  }).then(res => {
+    console.log(`ackMessages response status: ${res.status}`)
+  }).catch(e => {
+    console.log("ackMessages error: ", e.message)
+  })
+}
+
+export function syncMessages(
+  roomId: string,
+  onSuccess: (msgs: Message[]) => void,
+  on401: () => void,
+  onerror: (e: any) => void
+) {
+  getAxiosCli().get("/api/chat/pull", {
+    headers: {
+      "RoomId": encodeURIComponent(roomId)
+    }
+  }).then(res => {
+    if (res.status === 401) {
+      on401()
+      return
+    }
+    console.log(`response date: ${JSON.stringify(res.data)}`)
+    const receivedMessages: {
+      message: {
+        messageId: number,
+        type: number,
+        data: string,
+        sender: string
+      },
+      send: boolean,
+      success: boolean,
+      uuid: number
+    }[] = res.data
+    console.log("receivedMessages: ", receivedMessages)
+    onSuccess(receivedMessages.map(m => ({
+      msgId: m.message.messageId,
+      senderId: m.message.sender,
+      content: JSON.parse(m.message.data),
+      uuid: m.uuid,
+      type: m.message.type,
+      state: MessageState.SUCCESS,
+      roomId: roomId,
+      isSender: false,
+    })))
+
+  }).catch(e => {
+    onerror(e)
+  })
+}
+
 export function pullMessage(
   roomId: string,
   uuid: number,

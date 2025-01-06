@@ -263,6 +263,9 @@ export default function ChatScreen() {
 
 
   const onMessagePulled = async (msgs: Message[]) => {
+    if (msgs.length === 0) {
+      return
+    }
     //图片，视频下载缩略图
     const newMessages = await Promise.all(msgs.map(async msg => {
       if (msg.type === MessageType.IMAGE || msg.type === MessageType.VIDEO) {
@@ -275,31 +278,44 @@ export default function ChatScreen() {
       return msg
     }))
     await Storage.saveMessages(newMessages)
-    updateMessages(pre => [...(newMessages.reverse()), ...pre])
-  }
-  const syncMessage = async () => {
-    console.log('syart sync message')
-    try {
-      let msgUUID: number = 0
-      let direction: "before" | "after" = "before"
-      let tillNoMore = false
-      const lastReveivedUUID: number = await Storage.getLastReceivedMessageUUID(roomId)
-      console.log(`lastReveivedUUID: ${lastReveivedUUID}`)
-      if (lastReveivedUUID > 0) {
-        msgUUID = lastReveivedUUID 
-        direction = "after"
-        tillNoMore = true
-      }
-      Net.pullMessage(roomId, msgUUID, direction, tillNoMore, onMessagePulled,
-      () => {
-        logout()
-      }, (e) => {
-        console.log("pull message failed: ", e)
-      })
-    } catch (error) {
-      console.log("pullMessage error: ", error)
+    updateMessages(pre => [...newMessages, ...pre])
+    //ack
+    await Net.ackMessages(roomId, msgs[0].uuid)
+    if (msgs.length >= 100) {
+      syncMessages()
     }
   }
+
+  const syncMessages = async () => {
+    Net.syncMessages(roomId, onMessagePulled, () => {
+      logout()
+    }, (e) => {
+      console.log("sync message failed: ", e)
+    })
+  }
+  // const syncMessage = async () => {
+  //   console.log('syart sync message')
+  //   try {
+  //     let msgUUID: number = 0
+  //     let direction: "before" | "after" = "before"
+  //     let tillNoMore = false
+  //     const lastReveivedUUID: number = await Storage.getLastReceivedMessageUUID(roomId)
+  //     console.log(`lastReveivedUUID: ${lastReveivedUUID}`)
+  //     if (lastReveivedUUID > 0) {
+  //       msgUUID = lastReveivedUUID 
+  //       direction = "after"
+  //       tillNoMore = true
+  //     }
+  //     Net.pullMessage(roomId, msgUUID, direction, tillNoMore, onMessagePulled,
+  //     () => {
+  //       logout()
+  //     }, (e) => {
+  //       console.log("pull message failed: ", e)
+  //     })
+  //   } catch (error) {
+  //     console.log("pullMessage error: ", error)
+  //   }
+  // }
   useEffect(() => {
     if (!isLogedIn) {
       console.log(`isLoginId: ${isLogedIn}`)
@@ -317,21 +333,22 @@ export default function ChatScreen() {
       usernameRef.current = username!
     })
     //拉取最新消息
-    syncMessage().then(() => {
-      Storage.getMessages(roomId, 'before', 10).then(messages => {
-        console.log("messages size: ", messages.length)
-        updateMessages(messages)
-      })
-    }).catch(e => {
-      console.log("syncMessage error: ", e)
-    })
+    syncMessages()
+    // syncMessage().then(() => {
+    //   Storage.getMessages(roomId, 'before', 10).then(messages => {
+    //     console.log("messages size: ", messages.length)
+    //     updateMessages(messages)
+    //   })
+    // }).catch(e => {
+    //   console.log("syncMessage error: ", e)
+    // })
     console.log(`connect to room: ${roomId}`)
     Net.connect(roomId, () => {
       console.log("connected")
-      syncMessage()
+      syncMessages()
     }, (msg: string) => {
       if (msg === "notify") {
-        syncMessage()
+        syncMessages()
       }
     }, () => {
       logout()
