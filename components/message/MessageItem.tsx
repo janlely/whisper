@@ -31,7 +31,7 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
   return !msg.isSender ?
     <HStack space='md' style={[{ alignItems: 'center' }, styles.container]}>
       <Avatar
-        rounded={false}
+        rounded
         size={36}
         source={{ uri: msg.avatar }}
         containerStyle={{ backgroundColor: 'lightgreen', borderRadius: 10 }}
@@ -61,7 +61,7 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
         <MessageUnit msg={msg} style={{ alignSelf: 'flex-end' }} direction="right"/>
       </Center>
       <Avatar
-        rounded={false}
+        rounded
         size={36}
         source={{ uri: msg.avatar }}
         containerStyle={{ backgroundColor: 'lightgreen', borderRadius: 10 }}
