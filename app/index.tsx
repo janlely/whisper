@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Alert, Pressable, StyleSheet } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
@@ -64,26 +64,17 @@ export default function ChatScreen() {
 
   const addAvatar = async (messages: Message[]) => {
     try {
-      const avatarMap = new Map<string, string>()
       for (const msg of messages) {
         if (msg.avatar && msg.avatar.startsWith('http')) {
-          avatarMap.set(msg.senderId, msg.avatar)
+          await Storage.setAvatar(msg.senderId, msg.avatar)
         }
-      }
-      for (const entry of avatarMap.entries()) {
-        const avatar = await Storage.setAvatar(entry[0], entry[1])
-        avatarMap.set(entry[0], avatar)
       }
       return Promise.all(messages.map(async msg => {
-        if (msg.avatar && msg.avatar.startsWith('http')) {
-          msg.avatar = avatarMap.get(msg.senderId)
-        } else {
-          msg.avatar = await Storage.getAvatar(msg.senderId)
-        }
+        msg.avatar = await Storage.getAvatar(msg.senderId)
         return msg
       }))
     } catch (error) {
-      console.log('error: ', error)
+      Alert.alert(`[index.addAvatar]获取头像失败: ${JSON.stringify(error)}`)
       return []
     }
   }
@@ -127,6 +118,7 @@ export default function ChatScreen() {
       setAudioRecording(recording)
       console.log('Recording started');
     } catch (err) {
+      Alert.alert(`[index.startRecording]failed to start recording: ${JSON.stringify(err)}`)
       console.error('Failed to start recording', err);
     }
   }
@@ -162,6 +154,7 @@ export default function ChatScreen() {
     saveMessage(message).then(id => {
       sendMessage(message, id)
     }).catch(e => {
+      Alert.alert(`[index.handleSend]保存消息失败: ${JSON.stringify(e)}`)
       console.log('save message error: ', e)
     })
   }
@@ -180,6 +173,7 @@ export default function ChatScreen() {
             } : m
           )))
         }).catch(e => {
+          Alert.alert(`[index.sendMessage]更新uuid失败: ${JSON.stringify(e)}`)
           console.log('updateUUID error: ', e)
         })
       },
@@ -226,6 +220,7 @@ export default function ChatScreen() {
       sendMessage({ ...message, content: { ...message.content, audio: url } as AudioMessage }, id)
       console.log("send audio success")
     } catch (error) {
+      Alert.alert(`[index.handleAudioPressOut]保存消息失败: ${JSON.stringify(error)}`)
       console.log("error: ", error)
     }
   }
@@ -316,6 +311,7 @@ export default function ChatScreen() {
       console.log('getMessages: ', messages)
       updateMessages(messages)
     } catch (error) {
+      Alert.alert(`[index.getLocalMessages]获取本地消息失败: ${JSON.stringify(error)}`)
       console.log('error: ', error)
     }
   }
@@ -324,6 +320,7 @@ export default function ChatScreen() {
     Net.syncMessages(roomId, onMessagePulled, () => {
       logout()
     }, (e) => {
+      Alert.alert(`[index.syncMessages]同步消息失败: ${JSON.stringify(e)}`)
       console.log("sync message failed: ", e)
     })
   }
@@ -351,7 +348,6 @@ export default function ChatScreen() {
       logout()
       return
     }
-    // checkAlive()
     Storage.getValue('username').then(username => {
       if (!username) {
         logout()

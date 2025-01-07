@@ -1,6 +1,7 @@
 import { Message } from '@/types';
 import * as SQLite from 'expo-sqlite';
 import * as Net from '@/net';
+import { Alert } from 'react-native';
 
 let db: SQLite.SQLiteDatabase | undefined;
 const avatarMap = new Map<string, string>();
@@ -143,6 +144,7 @@ export async function getMessages(roomId: string, direction: "before" | "after",
       const avatar = await getAvatar(row.senderId)
       return { ...row, content: msg, avatar: avatar }
     } catch (error) {
+      Alert.alert(`[storate.getMessages]获取头像失败: ${JSON.stringify(error)}`)
       console.log('error get avatar for: ', row.senderId, error)
       throw error
     }

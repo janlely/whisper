@@ -2,7 +2,7 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { Center } from "@/components/ui/center";
 import { Input, InputField } from "@/components/ui/input";
 import { VStack } from "@/components/ui/vstack";
-import { StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { router } from "expo-router";
 import React, { useEffect } from "react";
 import {login} from '@/net'
@@ -64,11 +64,11 @@ export default function LoginScreen() {
         await Storage.setValue('lastLoginRoom', roomId)
         await Storage.setAvatar(username, avatar)
         
-        setIsLoading(false)
         router.replace({
           pathname: '/',
           params: { roomId: roomId, isLogedIn: 'true' },
         });
+        setIsLoading(false)
       },
       () => {
         setIsLoading(false)
@@ -157,13 +157,21 @@ export default function LoginScreen() {
             <InputField value={roomId} onChangeText={(text) => { setRoomId(text) }} />
           </Input>
         </Animated.View>
-        <Button
-          className="ml-auto w-full"
-          onPress={handleOnPress}
-          disabled={isLoading}
-        >
-          <ButtonText className="text-typography-0">登录</ButtonText>
-        </Button>
+        {!isLoading ?
+          <Button
+            className="ml-auto w-full"
+            onPress={handleOnPress}
+            style={styles.loading}
+          >
+            <ButtonText className="text-typography-0">登录</ButtonText>
+          </Button> :
+          <View
+            className="ml-auto w-full"
+            style={styles.loading}
+          >
+            <ActivityIndicator size="large" color='white' /> 
+          </View>
+        }
       </VStack>
     </Center>
   )
@@ -174,4 +182,10 @@ const styles = StyleSheet.create({
     height: 40,
     borderColor: 'lightgray'
   },
+  loading: {
+    backgroundColor: '#5c6370',
+    borderRadius: 5,
+    height: 40,
+    justifyContent: 'center'
+  }
 })
