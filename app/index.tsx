@@ -289,12 +289,18 @@ export default function ChatScreen() {
     //图片，视频下载缩略图
     const newMessages = await Promise.all(msgs.map(async msg => {
       if (msg.type === MessageType.IMAGE || msg.type === MessageType.VIDEO) {
-        console.log(`start download file: ${(msg.content as { thumbnail: string }).thumbnail}`)
+        console.log(`start download image file: ${(msg.content as { thumbnail: string }).thumbnail}`)
         const fileUrl = await Net.downloadFile((msg.content as { thumbnail: string }).thumbnail, roomId)
         console.log(`download and save file to : ${fileUrl}`)
         return { ...msg, content: { ...(msg.content as object), thumbnail: fileUrl } } as Message
       }
-      console.log(`not image or video: ${msg.type}`)
+      if (msg.type === MessageType.AUDIO) {
+        console.log(`start download auto file: ${(msg.content as AudioMessage).audio}`)
+        const fileUrl = await Net.downloadFile((msg.content as AudioMessage).audio, roomId)
+        console.log(`download and save audo to : ${fileUrl}`)
+        return { ...msg, content: { ...(msg.content as AudioMessage), audio: fileUrl } } as Message
+      }
+      console.log(`not image or video or audio: ${msg.type}`)
       return msg
     }))
     await Storage.saveMessages(newMessages)
