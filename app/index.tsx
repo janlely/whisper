@@ -1,4 +1,4 @@
-import { Alert, Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';

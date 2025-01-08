@@ -2,7 +2,7 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { Center } from "@/components/ui/center";
 import { Input, InputField } from "@/components/ui/input";
 import { VStack } from "@/components/ui/vstack";
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { router } from "expo-router";
 import React, { useEffect } from "react";
 import {login} from '@/net'

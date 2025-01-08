@@ -1,7 +1,7 @@
 import { Smile } from "lucide-react-native"
 import React from "react"
 import { Box } from "../ui/box"
-import EmojiPicker, { type EmojiType, EmojiKeyboard } from 'rn-emoji-keyboard'
+import { type EmojiType, EmojiKeyboard } from 'rn-emoji-keyboard'
 type InsertEmojiProps = {
   style?: any
   handleEmoji: (text: string) => void

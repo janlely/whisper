@@ -1,4 +1,3 @@
-import { StyleSheet } from "react-native"
 import Svg, { Circle, ClipPath, Defs, G, Polygon, Rect } from 'react-native-svg';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 import { useEffect } from "react";

@@ -72,6 +72,7 @@ type MessageUnitProps = {
 function MessageUnit({msg, style, direction }: MessageUnitProps) {
 
   const [playing, setPlaying] = React.useState(false)
+  const playingRef = React.useRef<NodeJS.Timeout | null>(null)
   const sound = React.useRef<Sound>()
   
   const goToImageViewer = async (roomId: string, uuid: number) => {
@@ -84,6 +85,9 @@ function MessageUnit({msg, style, direction }: MessageUnitProps) {
   }
 
   const playAudio = async () => {
+    if (playingRef.current) {
+      clearTimeout(playingRef.current)
+    }
     if (playing) {
       setPlaying(false)
       await sound.current?.unloadAsync()
@@ -92,6 +96,9 @@ function MessageUnit({msg, style, direction }: MessageUnitProps) {
       setPlaying(true)
       sound.current  = (await Audio.Sound.createAsync({ uri: (msg.content as AudioMessage).audio })).sound
       sound.current.playAsync()
+      playingRef.current = setTimeout(() => {
+        setPlaying(false)
+      }, (msg.content as AudioMessage).duration)
     }
   }
 

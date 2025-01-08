@@ -3887,11 +3887,6 @@ expo-asset@~11.0.1:
     invariant "^2.2.4"
     md5-file "^3.2.3"
 
-expo-audio@~0.3.1:
-  version "0.3.1"
-  resolved "https://registry.yarnpkg.com/expo-audio/-/expo-audio-0.3.1.tgz#11ce08ae778d5072bb24501382f95c931512f0f1"
-  integrity sha512-DVqI4NhQa4z6yHVGMgWPCqBOo1waMX0LnaAnCoUfDKe9InV/NDCT/infBFleBsn0urpFrRyCAbBdyIFW8k/B4Q==
-
 expo-av@~15.0.1:
   version "15.0.1"
   resolved "https://registry.yarnpkg.com/expo-av/-/expo-av-15.0.1.tgz#c337f831c2e29174de7117c37d2f92c1275bb4c4"

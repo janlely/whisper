@@ -1,8 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import { Input } from '../ui/input';
-import { Text } from '../ui/text';
 
 
 type RecordingProps = {
