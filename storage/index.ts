@@ -144,7 +144,7 @@ export async function getMessages(roomId: string, direction: "before" | "after",
       const avatar = await getAvatar(row.senderId)
       return { ...row, content: msg, avatar: avatar }
     } catch (error) {
-      Alert.alert('[storate.getMessages]',`获取头像失败: ${JSON.stringify(error)}`)
+      // Alert.alert('[storate.getMessages]',`获取头像失败: ${JSON.stringify(error)}`)
       console.log('error get avatar for: ', row.senderId, error)
       throw error
     }

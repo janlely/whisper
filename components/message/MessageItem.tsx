@@ -1,6 +1,5 @@
 import { AudioMessage, ImageMessage, Message, MessageState, MessageType, TextMessage, VideoMessage } from "@/types"
 import { HStack } from "../ui/hstack"
-import { Avatar } from "@rneui/base"
 import { Center } from "../ui/center"
 import { Pressable, Text, StyleSheet, View, ActivityIndicator } from 'react-native';
 import React, { useEffect } from "react";
@@ -30,11 +29,9 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
   }
   return !msg.isSender ?
     <HStack space='md' style={[{ alignItems: 'center' }, styles.container]}>
-      <Avatar
-        rounded
-        size={36}
+      <Image
         source={{ uri: msg.avatar }}
-        containerStyle={{ backgroundColor: 'lightgreen', borderRadius: 10 }}
+        style={{ width: 36, height: 36, borderRadius: 6 }}
       />
       <Center style={{
         backgroundColor: 'white',
@@ -60,11 +57,9 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
       }}>
         <MessageUnit msg={msg} style={{ alignSelf: 'flex-end' }} direction="right"/>
       </Center>
-      <Avatar
-        rounded
-        size={36}
+      <Image
         source={{ uri: msg.avatar }}
-        containerStyle={{ backgroundColor: 'lightgreen', borderRadius: 10 }}
+        style={{ width: 36, height: 36, borderRadius: 6 }}
       />
     </HStack>
 }
