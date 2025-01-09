@@ -76,7 +76,6 @@ function MessageUnit({msg, style, direction }: MessageUnitProps) {
   const sound = React.useRef<Sound>()
   const breakImage = require('../../assets/images/break.png')
   const imgSrc: string = (msg.content as ImageMessage).thumbnail ? (msg.content as ImageMessage).thumbnail : breakImage
-  console.log("imgSrc: ", imgSrc)
 
   
   const goToImageViewer = async (msg: Message) => {
