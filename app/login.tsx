@@ -64,10 +64,7 @@ export default function LoginScreen() {
         await Storage.setValue('lastLoginRoom', roomId)
         await Storage.setAvatar(username, avatar)
         
-        router.replace({
-          pathname: '/',
-          params: { roomId: roomId, isLogedIn: 'true' },
-        });
+        router.replace('/')
         setIsLoading(false)
       },
       () => {

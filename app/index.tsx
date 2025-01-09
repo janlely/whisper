@@ -16,7 +16,7 @@ import { Keyboard } from 'react-native';
 import {saveMessage} from '@/storage'
 import { resizeImageWithAspectRatio, uniqueByProperty } from '@/utils'
 import * as FileSystem from "expo-file-system"
-import { router, useNavigation, useRootNavigationState, useLocalSearchParams } from 'expo-router';
+import { router, useNavigation, useRootNavigationState } from 'expo-router';
 import * as Storage from '@/storage';
 import { Audio } from 'expo-av';
 import { Recording } from 'expo-av/build/Audio';
@@ -32,7 +32,7 @@ type UpdateMessages = {
 
 
 export default function ChatScreen() {
-  const { roomId, isLogedIn }  = useLocalSearchParams<{ roomId: string, isLogedIn: string }>();
+  // const { roomId, isLogedIn }  = useLocalSearchParams<{ roomId: string, isLogedIn: string }>();
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [inputing, setInputing] = React.useState(false);
   const [inputText, setInputText] = React.useState('');
@@ -47,6 +47,7 @@ export default function ChatScreen() {
   const recordDuration = React.useRef(0)
   const messagesRef = React.useRef<Message[]>([]);  // 创建 messages 的引用
   const usernameRef = React.useRef<string>('')
+  const roomIdRef = React.useRef<string>('')
   const connectExpire = React.useRef<number>(0) 
   const pingTaskRef = React.useRef<NodeJS.Timeout | null>(null)
 
@@ -146,7 +147,7 @@ export default function ChatScreen() {
       uuid: Date.now(),
       state: MessageState.SENDING,
       isSender: true,
-      roomId: roomId,
+      roomId: roomIdRef.current,
     }
     setInputText("")
     updateMessages(pre => [message, ...pre])
@@ -161,7 +162,7 @@ export default function ChatScreen() {
 
   const sendMessage = (msg: Message, id: number) => {
     console.log(`message to send: ${JSON.stringify(msg)}`)
-    Net.sendMessage(msg, roomId,
+    Net.sendMessage(msg, roomIdRef.current,
       (uuid: number) => {
         console.log('uuid: ', uuid.toString())
         console.log('id: ', id)
@@ -182,7 +183,7 @@ export default function ChatScreen() {
         logout()
       },
       () => {
-        Storage.failed(roomId, msg.msgId).then(() => {
+        Storage.failed(roomIdRef.current, msg.msgId).then(() => {
           console.log("send message failed")
         })
       }
@@ -211,7 +212,7 @@ export default function ChatScreen() {
       uuid: Date.now(),
       state: MessageState.SENDING,
       isSender: true,
-      roomId: roomId
+      roomId: roomIdRef.current
     }
     updateMessages(pre => [message, ...pre])
     msgListRef.current?.scrollToOffset({ offset: 0 })
@@ -229,8 +230,8 @@ export default function ChatScreen() {
   const handleMedia = async (uri: string) => {
     console.log('media uri: ', uri)
 
-    const thumbnailUri = FileSystem.cacheDirectory + `/${roomId}/${Date.now().toString()}_thumbnial.png`
-    const imageUri = FileSystem.cacheDirectory + `/${roomId}/${Date.now().toString()}.png`
+    const thumbnailUri = FileSystem.cacheDirectory + `/${roomIdRef.current}/${Date.now().toString()}_thumbnial.png`
+    const imageUri = FileSystem.cacheDirectory + `/${roomIdRef.current}/${Date.now().toString()}.png`
     console.log(`thumbnail uri: ${thumbnailUri}`)
     console.log(`image uri: ${imageUri}`)
 
@@ -260,7 +261,7 @@ export default function ChatScreen() {
       type: MessageType.IMAGE,
       state: MessageState.SENDING,
       isSender: true,
-      roomId: roomId
+      roomId: roomIdRef.current
     }
     updateMessages(pre => [
       message, ...pre
@@ -290,13 +291,13 @@ export default function ChatScreen() {
     const newMessages = await Promise.all(msgs.map(async msg => {
       if (msg.type === MessageType.IMAGE || msg.type === MessageType.VIDEO) {
         console.log(`start download image file: ${(msg.content as { thumbnail: string }).thumbnail}`)
-        const fileUrl = await Net.downloadFile((msg.content as { thumbnail: string }).thumbnail, roomId)
+        const fileUrl = await Net.downloadFile((msg.content as { thumbnail: string }).thumbnail, roomIdRef.current)
         console.log(`download and save file to : ${fileUrl}`)
         return { ...msg, content: { ...(msg.content as object), thumbnail: fileUrl } } as Message
       }
       if (msg.type === MessageType.AUDIO) {
         console.log(`start download auto file: ${(msg.content as AudioMessage).audio}`)
-        const fileUrl = await Net.downloadFile((msg.content as AudioMessage).audio, roomId)
+        const fileUrl = await Net.downloadFile((msg.content as AudioMessage).audio, roomIdRef.current)
         console.log(`download and save audo to : ${fileUrl}`)
         return { ...msg, content: { ...(msg.content as AudioMessage), audio: fileUrl } } as Message
       }
@@ -306,7 +307,7 @@ export default function ChatScreen() {
     await Storage.saveMessages(newMessages)
     updateMessages(pre => [...newMessages, ...pre])
     //ack
-    await Net.ackMessages(roomId, msgs[0].uuid)
+    await Net.ackMessages(roomIdRef.current, msgs[0].uuid)
     if (msgs.length >= 100) {
       syncMessages()
     }
@@ -314,7 +315,7 @@ export default function ChatScreen() {
 
   const getLocalMessages = async () => {
     try {
-      const messages = await Storage.getMessages(roomId, "before", 100)
+      const messages = await Storage.getMessages(roomIdRef.current, "before", 100)
       console.log('getMessages: ', messages)
       updateMessages(messages)
     } catch (error) {
@@ -324,7 +325,7 @@ export default function ChatScreen() {
   }
 
   const syncMessages = async () => {
-    Net.syncMessages(roomId, onMessagePulled, () => {
+    Net.syncMessages(roomIdRef.current, onMessagePulled, () => {
       logout()
     }, (e) => {
       // Alert.alert('[index.syncMessages]',`同步消息失败: ${JSON.stringify(e)}`)
@@ -333,7 +334,7 @@ export default function ChatScreen() {
   }
   useEffect(() => {
     navigation.setOptions({
-      headerTitle: roomId,
+      headerTitle: roomIdRef.current,
       headerLeft: () => (
         <OnlineLight getExpire={() => connectExpire.current}/>
       )
@@ -350,37 +351,36 @@ export default function ChatScreen() {
   }
 
   useEffect(() => {
-    if (!isLogedIn) {
-      console.log(`isLoginId: ${isLogedIn}`)
-      logout()
-      return
-    }
-    Storage.getValue('username').then(username => {
-      if (!username) {
+    Promise.all([
+     Storage.getValue('username'),
+     Storage.getValue('lastLoginRoom') 
+    ]).then(([username, lastLoginRoom]) => {
+      if (!username || !lastLoginRoom) {
         logout()
         return
       }
       usernameRef.current = username!
-    })
-    //显示现有消息
-    getLocalMessages()
-    //拉取最新消息
-    syncMessages()
-    console.log(`connect to room: ${roomId}`)
-    Net.connect(roomId, () => {
-      console.log("connected")
-      connectExpire.current = Date.now() + 30000
-      pingEvery15Seconds()
+      roomIdRef.current = lastLoginRoom
+      //显示现有消息
+      getLocalMessages()
+      //拉取最新消息
       syncMessages()
-    }, (msg: string) => {
-      if (msg === "notify") {
-        syncMessages()
-      } else if (msg === "pong") {
-        console.log("pong")
+      console.log(`connect to room: ${roomIdRef.current}`)
+      Net.connect(roomIdRef.current, () => {
+        console.log("connected")
         connectExpire.current = Date.now() + 30000
-      }
-    }, () => {
-      logout()
+        pingEvery15Seconds()
+        syncMessages()
+      }, (msg: string) => {
+        if (msg === "notify") {
+          syncMessages()
+        } else if (msg === "pong") {
+          console.log("pong")
+          connectExpire.current = Date.now() + 30000
+        }
+      }, () => {
+        logout()
+      })
     })
   }, [])
 
@@ -390,9 +390,9 @@ export default function ChatScreen() {
     }
     console.log("current messages: ", messages)
     console.log("handleOnEndReached, uuid: ", messages[messages.length-1].uuid)
-    Storage.getMessages(roomId, 'before', 10, messages[messages.length-1].uuid).then(messages => {
+    Storage.getMessages(roomIdRef.current, 'before', 10, messages[messages.length-1].uuid).then(messages => {
       if (messages.length === 0) {
-        Net.pullMessage(roomId, messages[messages.length-1].uuid, 'before', false,
+        Net.pullMessage(roomIdRef.current, messages[messages.length-1].uuid, 'before', false,
           onMessagePulled,
           () => {},
           () => {})
