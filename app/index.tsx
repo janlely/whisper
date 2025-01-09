@@ -48,6 +48,7 @@ export default function ChatScreen() {
   const messagesRef = React.useRef<Message[]>([]);  // 创建 messages 的引用
   const usernameRef = React.useRef<string>('')
   const roomIdRef = React.useRef<string>('')
+  const [roomId, setRoomId] = React.useState<string>('')
   const connectExpire = React.useRef<number>(0) 
   const pingTaskRef = React.useRef<NodeJS.Timeout | null>(null)
 
@@ -78,6 +79,11 @@ export default function ChatScreen() {
       // Alert.alert('[index.addAvatar]',`[index.addAvatar]获取头像失败: ${JSON.stringify(error)}`)
       return []
     }
+  }
+
+  const updateRoomId = (roomId: string) => {
+    setRoomId(roomId)
+    roomIdRef.current = roomId
   }
   const updateMessages: UpdateMessages = async (input)  => {
     if (typeof input === 'function') {
@@ -339,7 +345,7 @@ export default function ChatScreen() {
         <OnlineLight getExpire={() => connectExpire.current}/>
       )
     })
-  }, [navigation])
+  }, [navigation, roomId])
 
   const pingEvery15Seconds = () => {
     if (pingTaskRef.current) {
@@ -360,7 +366,7 @@ export default function ChatScreen() {
         return
       }
       usernameRef.current = username!
-      roomIdRef.current = lastLoginRoom
+      updateRoomId(lastLoginRoom)
       //显示现有消息
       getLocalMessages()
       //拉取最新消息
