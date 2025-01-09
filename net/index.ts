@@ -3,6 +3,7 @@ import axios, { Axios } from 'axios';
 import * as FileSystem from "expo-file-system"
 import * as Storage from '@/storage';
 
+
 let wsClient: WebSocket | undefined
 let axiosCli: Axios | undefined
 const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
@@ -201,7 +202,11 @@ async function fileExist(fileUrl: string): Promise<boolean> {
   return info.exists
 }
 
-export async function downloadFile(url: string, roomId: string, tag?: string): Promise<string> {
+export async function downloadFile(
+  url: string,
+  roomId: string,
+  tag?: string
+): Promise<string> {
   const dir = FileSystem.cacheDirectory + `/${roomId}`
   const info = await FileSystem.getInfoAsync(dir)
   if (info.exists && !info.isDirectory) {
@@ -217,14 +222,18 @@ export async function downloadFile(url: string, roomId: string, tag?: string): P
   }
   console.log(`location to save file: ${fileUrl}`) 
   return FileSystem.downloadAsync(url, fileUrl)
-  .then(() => {
-    console.log('download success')
-    return fileUrl
-  })
-  .catch(e => {
-    console.log('download failed: ', e)
-    throw new Error("下载失败")
-  })
+    .then((res) => {
+      if (res.status === 200) {
+        console.log('download success')
+        return fileUrl
+      }
+      console.log('download failed statue: ', res.status)
+      return '' 
+    })
+    .catch(e => {
+      console.log('download failed: ', e)
+      return '' 
+    })
 }
 
 

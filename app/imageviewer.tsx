@@ -11,16 +11,12 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Storage from '@/storage'
 import * as Net from '@/net'
 
-type ImageUrl = {
-  thumbnail: string,
-  uri: string
-}
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function ImagesScreen() {
   const { roomId, uuid } = useLocalSearchParams<{ roomId: string, uuid: string }>();
-  const [images, setImages] = useState<ImageUrl[]>([])
+  const [images, setImages] = useState<string[]>([])
   const [initIndex, setInitIndex] = useState(0)
-  const viewRef = useRef<FlashList<ImageUrl>>(null)
+  const viewRef = useRef<FlashList<string>>(null)
 
   
 
@@ -30,14 +26,7 @@ export default function ImagesScreen() {
     getImagesMessages(roomId)
       .then(msges => {
         console.log("got msges: ", msges)
-        setImages(msges.map(msg => {
-          const imgMsg = msg.content as ImageMessage
-          console.log("img: ", imgMsg.img)
-          return {
-            thumbnail: imgMsg.thumbnail,
-            uri: imgMsg.img
-          }
-        }))
+        setImages(msges.map(msg => (msg.content as ImageMessage).img))
         const index = msges.findIndex(msg => msg.uuid === Number(uuid))
         console.log("index: ", index)
         setInitIndex(index)
@@ -49,15 +38,9 @@ export default function ImagesScreen() {
             const fileUrl = await Net.downloadFile(messageContent.img, roomId)
             await Storage.updateContent(roomId, msg.uuid, { ...(msg.content as ImageMessage), img: fileUrl })
             console.log("image downloaded, fileUrl: ", fileUrl)
-            return {
-              thumbnail: messageContent.thumbnail,
-              uri: fileUrl 
-            }
+            return fileUrl
           } else {
-            return {
-              thumbnail: messageContent.thumbnail,
-              uri: messageContent.img 
-            }
+            return messageContent.img
           }
         })).then((imgs) => setImages(imgs))
         .catch(e => console.error('download image error: ',e))
@@ -71,12 +54,11 @@ export default function ImagesScreen() {
     }
   }, [images, initIndex])
 
-  const renderItem = ({ item }: { item: ImageUrl}) => {
-    console.log('item: ', item)
-    return (
-      <Image
+  const renderItem = ({ item }: { item: string}) => {
+    console.log(`item: ${JSON.stringify(item)}`)
+    return ( <Image
         style={styles.image}
-        source={item.uri.startsWith('http') ? { uri: item.thumbnail } : { uri: item.uri }}
+        source={item}
         contentFit='contain'
       />
     )

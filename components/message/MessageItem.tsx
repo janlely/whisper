@@ -74,14 +74,20 @@ function MessageUnit({msg, style, direction }: MessageUnitProps) {
   const [playing, setPlaying] = React.useState(false)
   const playingRef = React.useRef<NodeJS.Timeout | null>(null)
   const sound = React.useRef<Sound>()
+  const breakImage = require('../../assets/images/break.png')
+  const imgSrc: string = (msg.content as ImageMessage).thumbnail ? (msg.content as ImageMessage).thumbnail : breakImage
+  console.log("imgSrc: ", imgSrc)
+
   
-  const goToImageViewer = async (roomId: string, uuid: number) => {
-    console.log("roomId: ", roomId)
-    console.log("uuid: ", uuid)
-    router.push({
-      pathname: '/imageviewer',
-      params: { roomId, uuid },
-    })
+  const goToImageViewer = async (msg: Message) => {
+    const roomId = msg.roomId
+    const uuid = msg.uuid
+    if ((msg.content as ImageMessage).img) {
+      router.push({
+        pathname: '/imageviewer',
+        params: { roomId, uuid },
+      })
+    }
   }
 
   const playAudio = async () => {
@@ -107,10 +113,10 @@ function MessageUnit({msg, style, direction }: MessageUnitProps) {
       return <Text style={style}>{(msg.content as TextMessage).text}</Text>
     case MessageType.IMAGE:
       return (
-        <Pressable style={style} onPress={() => goToImageViewer(msg.roomId, msg.uuid)}>
+        <Pressable style={style} onPress={() => goToImageViewer(msg)}>
           <Image
             style={styles.thumbnial}
-            source={{ uri: (msg.content as ImageMessage).thumbnail }}
+            source={imgSrc}
             contentFit="contain"
           />
         </Pressable>

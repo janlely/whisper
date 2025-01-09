@@ -23,6 +23,7 @@ import { Recording } from 'expo-av/build/Audio';
 import * as Net from '@/net'
 import { FlashList } from '@shopify/flash-list';
 import { OnlineLight } from '@/components/message/Online';
+import * as Asset from 'expo-asset';
 
 
 type UpdateMessages = {
@@ -297,13 +298,15 @@ export default function ChatScreen() {
     const newMessages = await Promise.all(msgs.map(async msg => {
       if (msg.type === MessageType.IMAGE || msg.type === MessageType.VIDEO) {
         console.log(`start download image file: ${(msg.content as { thumbnail: string }).thumbnail}`)
-        const fileUrl = await Net.downloadFile((msg.content as { thumbnail: string }).thumbnail, roomIdRef.current)
+        const fileUrl = await Net.downloadFile((msg.content as { thumbnail: string }).thumbnail,
+          roomIdRef.current)
         console.log(`download and save file to : ${fileUrl}`)
         return { ...msg, content: { ...(msg.content as object), thumbnail: fileUrl } } as Message
       }
       if (msg.type === MessageType.AUDIO) {
         console.log(`start download auto file: ${(msg.content as AudioMessage).audio}`)
-        const fileUrl = await Net.downloadFile((msg.content as AudioMessage).audio, roomIdRef.current)
+        const fileUrl = await Net.downloadFile((msg.content as AudioMessage).audio,
+          roomIdRef.current)
         console.log(`download and save audo to : ${fileUrl}`)
         return { ...msg, content: { ...(msg.content as AudioMessage), audio: fileUrl } } as Message
       }
