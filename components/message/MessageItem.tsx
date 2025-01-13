@@ -16,36 +16,27 @@ type MessageItemProps = {
     msg: Message,
     retry: (_: Message) => void,
 }
-const SCREEN_HEIGHT = Dimensions.get('window').height;
+const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function MessageItem({ msg, retry }: MessageItemProps) {
 
-  // const [state, setState] = React.useState<MessageState>()
-  // const [componentPosition, setComponentPosition] = React.useState({ x: 0, y: 0 });
-  // const [componentSize, setComponentSize] = React.useState({ width: 0, height: 0 });
   const [popupTop, setPopupTop] = React.useState(0);
   const [popupLeft, setPopupLeft] = React.useState(0);
+  const [popupRight, setPopupRight] = React.useState(0);
   const pressableRef = React.useRef<View>(null);
   const [modalVisible, setModalVisible] = React.useState(false);
-
-
-
-  useEffect(() => {
-    console.log(`msg ${JSON.stringify(msg.content)} state is ${msg.state}`)
-   }, [])
 
   const onRetry = () => {
     console.log("retry")
     retry(msg)
-    // setState(MessageState.SENDING)
   }
 
   const handleLongPress = () => {
-    // console.log(`componentPosition: ${JSON.stringify(componentPosition)}`)
     if (pressableRef.current) {
       pressableRef.current.measure((x, y, width, height, px, py) => {
-        console.log(`组件相对于屏幕左上角的绝对位置: (${px}, ${py})`)
+        // console.log(`组件相对于屏幕左上角的绝对位置: (${px}, ${py})`)
         setPopupLeft(px)
         setPopupTop(py -15 + height)
+        setPopupRight(SCREEN_WIDTH - px - width)
         setModalVisible(true);
       })
     }
@@ -82,7 +73,7 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
             onPress={() => setModalVisible(false)}
           >
             <View style={[styles.popup, { top: popupTop, left: popupLeft }]}>
-              <View style={styles.arrow} />
+              <View style={styles.leftArrow} />
               <View className="flex-row">
                 <CopyOperator
                   operate={() => {
@@ -122,8 +113,8 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
             activeOpacity={1}
             onPress={() => setModalVisible(false)}
           >
-            <View style={[styles.popup, { top: popupTop, left: popupLeft }]}>
-              <View style={styles.arrow} />
+            <View style={[styles.popup, { top: popupTop, right: popupRight}]}>
+              <View style={styles.rightArrow} />
               <View className="flex-row">
                 <CopyOperator
                   operate={() => {
@@ -226,7 +217,7 @@ type OperatorProps = {
 function RecallOperator({operate}: OperatorProps) {
   return (
     <Pressable onPress={operate}>
-      <View style={{ padding: 2 }}>
+      <View style={styles.operator}>
         <Svg width={"24"} height={"28"} viewBox="0 0 1024 1024" >
           <G id="SVGRepo_bgCarrier" stroke-width="0"/>
           <G id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
@@ -248,7 +239,7 @@ function CopyOperator({operate}: OperatorProps) {
       console.log('copy pressed')
       operate()
     }}>
-      <View style={{ padding: 2 }}>
+      <View style={styles.operator}>
         <Svg width="24" height="28" viewBox="0 0 60 70">
           <Rect x="15" y="5" width="40" height="40" fill="#c9cdd4" rx={5} ry={5} />
           <Rect x="5" y="20" width="40" height="40" fill="lightgray" rx={5} ry={5} />
@@ -262,7 +253,7 @@ function CopyOperator({operate}: OperatorProps) {
 function DeleteOperator({operate}: OperatorProps) {
   return (
     <Pressable onPress={operate}>
-      <View style={{ padding: 2 }}>
+      <View style={styles.operator}>
         <Svg width="24" height="28" viewBox="0 0 24 24" >
           <G id="SVGRepo_bgCarrier" stroke-width="0"/>
           <G id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.624"/>
@@ -298,10 +289,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 5,
     backgroundColor: 'gray',
-    borderRadius: 8,
-    // elevation: 5,
+    borderRadius: 6,
     position: 'absolute',
-    // width: 100,
     height: 55 
   },
   modalBackground: {
@@ -310,13 +299,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  arrow: {
+  rightArrow: {
     position: 'absolute',
     width: 10,
     height: 10,
-    left: 20,
+    right: 10,
     top: -5,
     transform: [{ rotate: '45deg' }],
     backgroundColor: 'gray',
+  },
+  leftArrow: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    left: 10,
+    top: -5,
+    transform: [{ rotate: '45deg' }],
+    backgroundColor: 'gray',
+  },
+  operator: {
+    padding: 2,
+    marginHorizontal: 10
   }
 })
