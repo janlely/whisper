@@ -2,7 +2,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Message, MessageType, MessageState, AudioMessage, ImageMessage, TextMessage } from '@/types';
 import MessageItem from '@/components/message/MessageItem';
 import { Input, InputField } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import { Keyboard } from 'react-native';
 import {saveMessage} from '@/storage'
 import { resizeImageWithAspectRatio, uniqueByProperty, getEventEmitter } from '@/utils'
 import * as FileSystem from "expo-file-system"
-import { router, useNavigation } from 'expo-router';
+import { router, useNavigation, useRootNavigationState } from 'expo-router';
 import * as Storage from '@/storage';
 import { Audio } from 'expo-av';
 import { Recording } from 'expo-av/build/Audio';
@@ -42,7 +42,8 @@ export default function ChatScreen() {
   const [openEmojiPicker, setOpenEmojiPicker] = React.useState(false);
   const [speaking, setSpeaking] = React.useState(false);
   const navigation = useNavigation();
-  // const rootNavigationState = useRootNavigationState();
+  const rootNavigationState = useRootNavigationState();
+  const rootNavigationStateRef = useRef<any>(null)
   const msgListRef = React.useRef<FlashList<Message>>(null)
   const [permissionResponse, requestPermission] = Audio.usePermissions();
   const [audioRecording, setAudioRecording] = React.useState<Recording>()
@@ -54,18 +55,23 @@ export default function ChatScreen() {
   const connectExpire = React.useRef<number>(0) 
   const pingTaskRef = React.useRef<NodeJS.Timeout | null>(null)
 
-  // const logout = useCallback(() => {
-  //   console.log('logout, ', JSON.stringify(rootNavigationState))
-  //   if (rootNavigationState?.key) {
-  //     Net.disconnect()
-  //     router.replace({ pathname: '/login', params: { isLogout: 'true' } })
-  //   }
-  // }, [rootNavigationState])
+  const logout = () => {
+    console.log('logout, ', JSON.stringify(rootNavigationStateRef.current))
+    if (rootNavigationStateRef.current?.key) {
+      Net.disconnect()
+      router.replace({ pathname: '/login', params: { isLogout: 'true' } })
+    } else {
+      setTimeout(() => {
+        logout()
+      }, 500)
+    }
+  }
 
-  const logout = useCallback(() => {
-    Net.disconnect()
-    router.replace({ pathname: '/login', params: { isLogout: 'true' } })
-  }, [router])
+  useEffect(() => {
+    console.log('rootNavigationState changed, value is: ', JSON.stringify(rootNavigationStateRef))
+    rootNavigationStateRef.current = rootNavigationState
+  }, [rootNavigationState])
+
   
 
   const addAvatar = async (messages: Message[]) => {

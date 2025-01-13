@@ -2,7 +2,7 @@ import { AudioMessage, ImageMessage, Message, MessageState, MessageType, TextMes
 import { HStack } from "../ui/hstack"
 import { Center } from "../ui/center"
 import { Pressable, Text, StyleSheet, View, ActivityIndicator, Modal, Dimensions, TouchableOpacity } from 'react-native';
-import React, { useEffect } from "react";
+import React from "react";
 import { router } from "expo-router";
 import { Image } from "expo-image";
 import AudioAnimatedIcon from "./AudioAnimatedIcon";
