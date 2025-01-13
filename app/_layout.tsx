@@ -20,12 +20,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
-      router.replace({
-        pathname: '/',
-        params: { roomId: '好好学习'},
-      });
     }
-  }, [loaded, router]);
+  }, [loaded]);
 
   if (!loaded) {
     return null;

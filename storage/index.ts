@@ -38,6 +38,22 @@ export async function saveMessages(messages: Message[]) {
   }))
 }
 
+export async function recallMessgae(uuid: number): Promise<boolean> {
+  const db = await getDB();
+  return db.runAsync(`UPDATE messages SET state = 3 WHERE uuid = ?`, [uuid]).then(() => true).catch((e) => {
+    console.log('recall message error: ', e)
+    return false
+  })
+}
+
+export async function delMessgae(uuid: number): Promise<boolean> {
+  const db = await getDB();
+  return db.runAsync(`DELETE FROM messages WHERE uuid = ?`, [uuid]).then(() => true).catch((e) => {
+    console.log('delete message error: ', e)
+    return false
+  })
+}
+
 export async function saveMessage(message: Message): Promise<number> {
   console.log('message to save: ', message)
   const db = await getDB();

@@ -1,5 +1,15 @@
 import {useImageManipulator} from 'expo-image-manipulator' // Update based on documentation
 import * as FileSystem from 'expo-file-system';
+import { EventEmitter } from 'events';
+
+let ee: EventEmitter | undefined
+
+export const getEventEmitter = () => {
+  if (!ee) {
+    ee = new EventEmitter()
+  }
+  return ee
+}
 
 export async function resizeImageWithAspectRatio(imageUri: string, width: number, dest: string) {
     const manipulateAsync = useImageManipulator(imageUri);

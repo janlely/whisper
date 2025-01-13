@@ -2,8 +2,8 @@ import { Pressable, StyleSheet } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
-import React, { useEffect } from 'react';
-import { Message, MessageType, MessageState, AudioMessage, ImageMessage } from '@/types';
+import React, { useCallback, useEffect } from 'react';
+import { Message, MessageType, MessageState, AudioMessage, ImageMessage, TextMessage } from '@/types';
 import MessageItem from '@/components/message/MessageItem';
 import { Input, InputField } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,16 +14,17 @@ import { EmojiKeyboard, EmojiType } from 'rn-emoji-keyboard';
 import { Box } from '@/components/ui/box';
 import { Keyboard } from 'react-native';
 import {saveMessage} from '@/storage'
-import { resizeImageWithAspectRatio, uniqueByProperty } from '@/utils'
+import { resizeImageWithAspectRatio, uniqueByProperty, getEventEmitter } from '@/utils'
 import * as FileSystem from "expo-file-system"
-import { router, useNavigation, useRootNavigationState } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import * as Storage from '@/storage';
 import { Audio } from 'expo-av';
 import { Recording } from 'expo-av/build/Audio';
 import * as Net from '@/net'
 import { FlashList } from '@shopify/flash-list';
 import { OnlineLight } from '@/components/message/Online';
-import * as Asset from 'expo-asset';
+import * as Clipboard from 'expo-clipboard';
+
 
 
 type UpdateMessages = {
@@ -41,7 +42,7 @@ export default function ChatScreen() {
   const [openEmojiPicker, setOpenEmojiPicker] = React.useState(false);
   const [speaking, setSpeaking] = React.useState(false);
   const navigation = useNavigation();
-  const rootNavigationState = useRootNavigationState();
+  // const rootNavigationState = useRootNavigationState();
   const msgListRef = React.useRef<FlashList<Message>>(null)
   const [permissionResponse, requestPermission] = Audio.usePermissions();
   const [audioRecording, setAudioRecording] = React.useState<Recording>()
@@ -53,17 +54,19 @@ export default function ChatScreen() {
   const connectExpire = React.useRef<number>(0) 
   const pingTaskRef = React.useRef<NodeJS.Timeout | null>(null)
 
+  // const logout = useCallback(() => {
+  //   console.log('logout, ', JSON.stringify(rootNavigationState))
+  //   if (rootNavigationState?.key) {
+  //     Net.disconnect()
+  //     router.replace({ pathname: '/login', params: { isLogout: 'true' } })
+  //   }
+  // }, [rootNavigationState])
 
-  const logout = () => {
-    if (!rootNavigationState?.key) {
-      setTimeout(() => {
-        logout()
-      }, 500)
-    } else {
-      Net.disconnect()
-      router.replace({ pathname: '/login', params: { isLogout: 'true' } })
-    }
-  }
+  const logout = useCallback(() => {
+    Net.disconnect()
+    router.replace({ pathname: '/login', params: { isLogout: 'true' } })
+  }, [router])
+  
 
   const addAvatar = async (messages: Message[]) => {
     try {
@@ -345,7 +348,9 @@ export default function ChatScreen() {
     navigation.setOptions({
       headerTitle: roomIdRef.current,
       headerLeft: () => (
-        <OnlineLight getExpire={() => connectExpire.current}/>
+        <OnlineLight getExpire={() => {
+          return connectExpire.current
+        }}/>
       )
     })
   }, [navigation, roomId])
@@ -359,7 +364,50 @@ export default function ChatScreen() {
     }, 15000)
   }
 
+  const deleteMessage = (uuid: number) => {
+    Storage.delMessgae(uuid).then((success) => {
+      if (success) {
+        updateMessages(pre => pre.filter(msg => msg.uuid !== uuid))
+      }
+    })
+  }
+
+  const recallMessage = (uuid: number) => {
+    console.log('recall message, uuid: ', uuid)
+    Net.recallMessage(uuid, roomIdRef.current).then((success) => {
+      if (!success) {
+        console.log('recall message failed')
+        return
+      }
+      Storage.recallMessgae(uuid).then((succ) => {
+        if (succ) {
+          updateMessages(pre => pre.map(msg => {
+            if (msg.uuid === uuid) {
+              return {...msg, state: MessageState.RECALLED}
+            }
+            return msg
+          }))
+        }
+      })
+    })
+  }
+
+  const handleOthersRecall = (uuid: number) => {
+    console.log('message to recall, uuid: ', uuid)
+    Storage.recallMessgae(uuid).then((succ) => {
+      if (succ) {
+        updateMessages(pre => pre.map(msg => {
+          if (msg.uuid === uuid) {
+            return { ...msg, state: MessageState.RECALLED }
+          }
+          return msg
+        }))
+      }
+    })
+  }
+
   useEffect(() => {
+    console.log('useEffect')
     Promise.all([
      Storage.getValue('username'),
      Storage.getValue('lastLoginRoom') 
@@ -374,6 +422,20 @@ export default function ChatScreen() {
       getLocalMessages()
       //拉取最新消息
       syncMessages()
+      //订阅消息上面的操作
+      getEventEmitter().on('messageOperation', ({type, msg}) => {
+        if (msg.roomId !== roomIdRef.current) {
+          console.log('not my message')
+          return
+        }
+        if (type === 'delete') {
+          deleteMessage(msg.uuid)
+        } else if (type === 'copy' && msg.type === MessageType.TEXT) {
+          Clipboard.setStringAsync((msg.content as TextMessage).text)
+        } else if (type === 'recall' && msg.type === MessageType.TEXT) {
+          recallMessage(msg.uuid)
+        }
+      });
       console.log(`connect to room: ${roomIdRef.current}`)
       Net.connect(roomIdRef.current, () => {
         console.log("connected")
@@ -386,6 +448,8 @@ export default function ChatScreen() {
         } else if (msg === "pong") {
           console.log("pong")
           connectExpire.current = Date.now() + 30000
+        } else if (msg.startsWith('recall')) {
+          handleOthersRecall(parseInt(msg.substring(7)))
         }
       }, () => {
         logout()
@@ -417,7 +481,11 @@ export default function ChatScreen() {
 
   const flatListItemRender = ({ item }: {item: Message}) => {
     console.log('render: ', item)
-    return <MessageItem msg={item} retry={retry}/>
+    return (
+    <MessageItem
+      msg={item}
+      retry={retry}
+    />)
   }
 
   return (

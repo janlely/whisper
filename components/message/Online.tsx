@@ -5,7 +5,7 @@ type Props = {
   getExpire: () => number
 }
 export function OnlineLight({ getExpire }: Props) {
-  const [connectExpire, setConnectExpire] = useState(0)
+  const [backgroundColor, setBackgroundColor] = useState('gray')
   const intervalRef = useRef<NodeJS.Timeout| null>(null)
 
   useEffect(() => {
@@ -13,12 +13,12 @@ export function OnlineLight({ getExpire }: Props) {
       clearInterval(intervalRef.current)
     }
     intervalRef.current = setInterval(() => {
-      setConnectExpire(getExpire())
+      setBackgroundColor(getExpire() > Date.now() ? 'green' : 'gray')
     }, 1000)
   }, [])
 
   return (
-    <View style={[styles.container, { backgroundColor: connectExpire > Date.now() ? 'green' : 'gray' }]}/>
+    <View style={[styles.container, { backgroundColor:  backgroundColor}]}/>
   )
 }
 

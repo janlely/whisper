@@ -52,6 +52,26 @@ export const connect = (roomId: string, onopen: () => void, onmessage: (_: strin
   };
 }
 
+export async function recallMessage(uuid: number, roomId: string): Promise<boolean> {
+  return getAxiosCli().get("/api/chat/recall", {
+    params: {
+      uuid: uuid.toString()
+    },
+    headers: {
+      "RoomId": encodeURIComponent(roomId)
+    }
+  }).then(res => {
+    if (res.status === 200) {
+      return true
+    }
+    return false
+  }).catch(e => {
+    console.log('recallMessage error: ', e)
+    return false
+  })
+}
+
+
 export function sendMessage(
   message: Message,
   roomId: string,

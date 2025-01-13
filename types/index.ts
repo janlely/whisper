@@ -8,7 +8,14 @@ export enum MessageType {
 export enum MessageState {
     SENDING = 0,
     SUCCESS = 1,
-    FAILED = 2
+    FAILED = 2,
+    RECALLED = 3
+}
+
+export enum MessageOptType {
+    COPY = 0,
+    DELETE = 1,
+    RECALL = 2
 }
 
 export type TextMessage = {
@@ -40,4 +47,9 @@ export type Message = {
     roomId: string,
     isSender: boolean,
     avatar?: string
+}
+
+export type MessageOpt = {
+    type: MessageOptType,
+    uuid: number
 }
