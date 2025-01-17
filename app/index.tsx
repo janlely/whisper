@@ -205,6 +205,12 @@ export default function ChatScreen() {
       () => {
         Storage.failed(roomIdRef.current, msg.msgId).then(() => {
           console.log("send message failed")
+          updateMessages(pre => pre.map(m => (
+            msg.senderId + msg.msgId === m.senderId + m.msgId ? {
+              ...m, state: MessageState.FAILED
+            } : m
+          )))
+          
         })
       }
     )
