@@ -46,7 +46,8 @@ export type Message = {
     state: MessageState,
     roomId: string,
     isSender: boolean,
-    avatar?: string
+    quote: Message | null
+    avatar?: string,
 }
 
 export type MessageOpt = {

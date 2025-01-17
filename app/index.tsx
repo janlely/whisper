@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Smile, AudioLines, KeyboardIcon } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Message, MessageType, MessageState, AudioMessage, ImageMessage, TextMessage } from '@/types';
 import MessageItem from '@/components/message/MessageItem';
 import { Input, InputField } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import * as Net from '@/net'
 import { FlashList } from '@shopify/flash-list';
 import { OnlineLight } from '@/components/message/Online';
 import * as Clipboard from 'expo-clipboard';
+import Svg, { G, Path } from 'react-native-svg';
 
 
 
@@ -54,6 +55,8 @@ export default function ChatScreen() {
   const [roomId, setRoomId] = React.useState<string>('')
   const connectExpire = React.useRef<number>(0) 
   const pingTaskRef = React.useRef<NodeJS.Timeout | null>(null)
+  const [quoteMsg, setQuoteMsg] = React.useState<Message|null>(null)
+  const inputFiledRef = React.useRef<any>(null)
 
   const logout = () => {
     console.log('logout, ', JSON.stringify(rootNavigationStateRef.current))
@@ -71,7 +74,6 @@ export default function ChatScreen() {
     console.log('rootNavigationState changed, value is: ', JSON.stringify(rootNavigationStateRef))
     rootNavigationStateRef.current = rootNavigationState
   }, [rootNavigationState])
-
   
 
   const addAvatar = async (messages: Message[]) => {
@@ -164,12 +166,14 @@ export default function ChatScreen() {
       state: MessageState.SENDING,
       isSender: true,
       roomId: roomIdRef.current,
+      quote: quoteMsg
     }
     setInputText("")
     updateMessages(pre => [message, ...pre])
     msgListRef.current?.scrollToOffset({ offset: 0 })
     saveMessage(message).then(id => {
       sendMessage(message, id)
+      setQuoteMsg(null)
     }).catch(e => {
       // Alert.alert('[index.handleSend]',`保存消息失败: ${JSON.stringify(e)}`)
       console.log('save message error: ', e)
@@ -228,7 +232,8 @@ export default function ChatScreen() {
       uuid: Date.now(),
       state: MessageState.SENDING,
       isSender: true,
-      roomId: roomIdRef.current
+      roomId: roomIdRef.current,
+      quote: null
     }
     updateMessages(pre => [message, ...pre])
     msgListRef.current?.scrollToOffset({ offset: 0 })
@@ -277,7 +282,8 @@ export default function ChatScreen() {
       type: MessageType.IMAGE,
       state: MessageState.SENDING,
       isSender: true,
-      roomId: roomIdRef.current
+      roomId: roomIdRef.current,
+      quote: null
     }
     updateMessages(pre => [
       message, ...pre
@@ -398,6 +404,14 @@ export default function ChatScreen() {
     })
   }
 
+  const quoteMessage = (msg: Message) => {
+    console.log('quote message: ', msg)
+    setQuoteMsg(msg)
+    if (inputFiledRef.current) {
+      inputFiledRef.current.focus()
+    }
+  }
+
   const handleOthersRecall = (uuid: number) => {
     console.log('message to recall, uuid: ', uuid)
     Storage.recallMessgae(uuid).then((succ) => {
@@ -440,6 +454,8 @@ export default function ChatScreen() {
           Clipboard.setStringAsync((msg.content as TextMessage).text)
         } else if (type === 'recall' && msg.type === MessageType.TEXT) {
           recallMessage(msg.uuid)
+        } else if (type === 'quote' && msg.type === MessageType.TEXT) {
+          quoteMessage(msg)
         }
       });
       console.log(`connect to room: ${roomIdRef.current}`)
@@ -509,22 +525,46 @@ export default function ChatScreen() {
         onEndReached={handleOnEndReached}
         estimatedItemSize={100}
       />
-      <HStack space='sm' className='px-2' style={styles.bottomStack}>
+      <HStack space='sm' className='px-2' style={[styles.bottomStack]}>
         {!speaking ?
           <AudioLines onPress={() => setSpeaking(true)} color={'black'} style={styles.audio} /> :
           <KeyboardIcon onPress={() => setSpeaking(false)} color={'black'} style={styles.audio} />
-        } 
+        }
         {!speaking ?
-          <Input
-            variant="outline"
-            size="md"
-            isDisabled={false}
-            isInvalid={false}
-            isReadOnly={false}
-            style={styles.inputContainer}
-          >
-            <InputField onPress={() => setOpenEmojiPicker(false)} onFocus={() => setOpenEmojiPicker(false)} value={inputText} onChangeText={handleOnChange} />
-          </Input> :
+          <View style={styles.inputArea}>
+            <Input
+              variant="outline"
+              size="md"
+              isDisabled={false}
+              isInvalid={false}
+              isReadOnly={false}
+              style={styles.inputContainer}
+            >
+              <InputField
+                ref={inputFiledRef}
+                onPress={() => setOpenEmojiPicker(false)}
+                onFocus={() => setOpenEmojiPicker(false)}
+                value={inputText}
+                onChangeText={handleOnChange}
+              />
+            </Input>
+            {quoteMsg &&
+              <View style={styles.quoteContainer}>
+                <Text style={{ lineHeight: 18, flex: 1 }} numberOfLines={1}>{(quoteMsg.content as TextMessage).text}</Text>
+                <Pressable onPress={() => setQuoteMsg(null)}>
+                  <Svg viewBox="0 0 1024 1024" height="15" width="15" fill="#000000" >
+                    <G id="SVGRepo_bgCarrier" stroke-width="0" />
+                    <G id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" />
+                    <G id="SVGRepo_iconCarrier">
+                      <Path d="M512 897.6c-108 0-209.6-42.4-285.6-118.4-76-76-118.4-177.6-118.4-285.6 0-108 42.4-209.6 118.4-285.6 76-76 177.6-118.4 285.6-118.4 108 0 209.6 42.4 285.6 118.4 157.6 157.6 157.6 413.6 0 571.2-76 76-177.6 118.4-285.6 118.4z m0-760c-95.2 0-184.8 36.8-252 104-67.2 67.2-104 156.8-104 252s36.8 184.8 104 252c67.2 67.2 156.8 104 252 104 95.2 0 184.8-36.8 252-104 139.2-139.2 139.2-364.8 0-504-67.2-67.2-156.8-104-252-104z" fill="gray" />
+                      <Path d="M707.872 329.392L348.096 689.16l-31.68-31.68 359.776-359.768z" fill="gray" />
+                      <Path d="M328 340.8l32-31.2 348 348-32 32z" fill="gray" />
+                    </G>
+                  </Svg>
+                </Pressable>
+              </View>
+            }
+          </View> :
 
           <Pressable
             onPressIn={handleAudioPressIn}
@@ -540,7 +580,7 @@ export default function ChatScreen() {
         }} color={'black'} style={styles.emojiIcon} />
         {inputing ?
           <Button className='px-1' onPress={handleSend} style={styles.sendBtn} ><Text size='md'>发送</Text></Button> :
-          <InsertMedia style={styles.imageIcon} handleMedia={handleMedia}/>
+          <InsertMedia style={styles.imageIcon} handleMedia={handleMedia} />
         }
       </HStack>
       {openEmojiPicker &&
@@ -585,10 +625,15 @@ const styles = StyleSheet.create({
     borderWidth: 1, // 可选：边框宽度
     borderColor: 'lightgray'
   },
+  inputArea: {
+    flex: 1,
+    // minHeight: '55%',
+    maxHeight: '75%'
+  },
   inputContainer: {
     flexDirection: 'row',
-    flex: 1,
-    height: '55%', // 与 Input 的高度一致
+    // flex: 1,
+    height: 41,
     justifyContent: 'center',
     alignItems: 'center',
     // backgroundColor: 'black', // 可选：背景颜色
@@ -597,6 +642,16 @@ const styles = StyleSheet.create({
     borderStyle: 'solid', // 可选：边框样式
     borderWidth: 1, // 可选：边框宽度
     borderColor: 'lightgray'
+  },
+  quoteContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'lightgray',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    borderRadius: 3,
+    marginTop: 2
+    // display: 'none',
   },
   emojiIcon: {
     flex: 0.1
@@ -607,7 +662,7 @@ const styles = StyleSheet.create({
   },
   sendBtn: {
     flex: 0.2,
-    backgroundColor: 'lightgreen' 
+    backgroundColor: 'lightgreen',
   },
   emojiKeyboard: {
     width: '100%',

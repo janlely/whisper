@@ -83,6 +83,7 @@ export function sendMessage(
     messageId: message.msgId,
     type: message.type,
     data: JSON.stringify(message.content),
+    quote: message.quote ? message.quote.uuid : 0
   }, {
     headers: {
       "RoomId": encodeURIComponent(roomId)
@@ -128,7 +129,7 @@ export function syncMessages(
     headers: {
       "RoomId": encodeURIComponent(roomId)
     }
-  }).then(res => {
+  }).then(async res => {
     if (res.status === 401) {
       on401()
       return
@@ -144,10 +145,11 @@ export function syncMessages(
       send: boolean,
       success: boolean,
       uuid: number,
-      avatar: string
+      avatar: string,
+      quote: number
     }[] = res.data
     console.log("receivedMessages: ", receivedMessages)
-    onSuccess(receivedMessages.map(m => ({
+    onSuccess(await Promise.all(receivedMessages.map(async m => ({
       msgId: m.message.messageId,
       senderId: m.message.sender,
       content: JSON.parse(m.message.data),
@@ -156,13 +158,15 @@ export function syncMessages(
       state: MessageState.SUCCESS,
       roomId: roomId,
       isSender: false,
-      avatar: m.avatar
-    })))
+      avatar: m.avatar,
+      quote: await Storage.getMessageByUUID(m.quote) 
+    }))))
 
   }).catch(e => {
     onerror(e)
   })
 }
+
 
 export function pullMessage(
   roomId: string,
@@ -181,7 +185,7 @@ export function pullMessage(
     headers: {
       "RoomId": encodeURIComponent(roomId)
     }
-  }).then(res => {
+  }).then(async res => {
     if (res.status === 401) {
       on401()
       return
@@ -196,10 +200,11 @@ export function pullMessage(
       },
       send: boolean,
       success: boolean,
-      uuid: number
+      uuid: number,
+      quote: number
     }[] = res.data
     console.log("receivedMessages: ", receivedMessages)
-    onSuccess(receivedMessages.map(m => ({
+    onSuccess(await Promise.all(receivedMessages.map(async m => ({
       msgId: m.message.messageId,
       senderId: m.message.sender,
       content: JSON.parse(m.message.data),
@@ -208,7 +213,8 @@ export function pullMessage(
       state: MessageState.SUCCESS,
       roomId: roomId,
       isSender: false,
-    })))
+      quote: await Storage.getMessageByUUID(m.quote) 
+    }))))
     if (tillNoMore && direction === "after" && receivedMessages.length > 0) {
       pullMessage(roomId, receivedMessages[receivedMessages.length - 1].uuid, "after", tillNoMore, onSuccess, on401, onerror)
     }

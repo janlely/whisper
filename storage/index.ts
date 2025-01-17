@@ -1,4 +1,4 @@
-import { Message } from '@/types';
+import { AudioMessage, ImageMessage, Message, MessageState, MessageType, TextMessage, VideoMessage } from '@/types';
 import * as SQLite from 'expo-sqlite';
 import * as Net from '@/net';
 import { Alert } from 'react-native';
@@ -7,7 +7,7 @@ let db: SQLite.SQLiteDatabase | undefined;
 const avatarMap = new Map<string, string>();
 
 const SELECT_STRING = `
-    SELECT username as senderId, room_id as roomId, type, content, msg_id as msgId, uuid, state, is_sender as isSender
+    SELECT username as senderId, room_id as roomId, type, content, msg_id as msgId, uuid, state, is_sender as isSender, quote
     FROM messages
 `
 async function getDB(): Promise<SQLite.SQLiteDatabase> {
@@ -40,10 +40,23 @@ export async function saveMessages(messages: Message[]) {
 
 export async function recallMessgae(uuid: number): Promise<boolean> {
   const db = await getDB();
-  return db.runAsync(`UPDATE messages SET state = 3 WHERE uuid = ?`, [uuid]).then(() => true).catch((e) => {
+  return db.getAllAsync(`UPDATE messages SET state = 3 WHERE uuid = ?`, [uuid]).then(() => true).catch((e) => {
     console.log('recall message error: ', e)
     return false
   })
+}
+
+export async function getMessageByUUID(uuid: number): Promise<Message | null> {
+  const db = await getDB();
+  return db.getAllAsync(`
+    ${SELECT_STRING}
+    WHERE uuid = ?
+    `, [uuid]).then(rows => {
+      let msg = rows.length > 0 ? rows[0] as Message : null
+      return msg ? { ...msg, content: JSON.parse(msg?.content as string) } : null
+    }).catch(e => {
+      return null
+    })
 }
 
 export async function delMessgae(uuid: number): Promise<boolean> {
@@ -58,8 +71,8 @@ export async function saveMessage(message: Message): Promise<number> {
   console.log('message to save: ', message)
   const db = await getDB();
   await db.runAsync(`
-    INSERT INTO messages (username, room_id, type, content, msg_id, uuid, state, is_sender)
-    VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO messages (username, room_id, type, content, msg_id, uuid, state, is_sender, quote)
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT DO NOTHING`,
     [
       message.senderId,
@@ -69,7 +82,8 @@ export async function saveMessage(message: Message): Promise<number> {
       message.msgId,
       message.uuid,
       message.state as number,
-      message.isSender ? 1 : 0
+      message.isSender ? 1 : 0,
+      message.quote ? message.quote.uuid : 0
     ])
   console.log("save message success")
   const row: {id:number} | null = await db.getFirstAsync(`SELECT last_insert_rowid() as id`)
@@ -125,7 +139,18 @@ export async function getLastReceivedMessageUUID(roomId: string): Promise<number
 export async function getMessages(roomId: string, direction: "before" | "after", limit: number, uuid?: number): Promise<Message[]> {
   
   const db = await getDB();
-  let rows: Message[]
+  let rows: {
+    msgId: number,
+    senderId: string,
+    content: string
+    uuid: number,
+    type: MessageType,
+    state: MessageState,
+    roomId: string,
+    isSender: boolean,
+    quote: number
+    avatar?: string,
+  }[]
   if (uuid && direction === "before") {
     rows = await db.getAllAsync(`
     ${SELECT_STRING}
@@ -155,10 +180,10 @@ export async function getMessages(roomId: string, direction: "before" | "after",
   }
 
   return Promise.all(rows.map(async row => {
-    const msg = JSON.parse(row.content as string)
+    const msg = JSON.parse(row.content)
     try {
       const avatar = await getAvatar(row.senderId)
-      return { ...row, content: msg, avatar: avatar }
+      return { ...row, content: msg, avatar: avatar, quote: await getMessageByUUID(row.quote) }
     } catch (error) {
       // Alert.alert('[storate.getMessages]',`获取头像失败: ${JSON.stringify(error)}`)
       console.log('error get avatar for: ', row.senderId, error)
@@ -210,7 +235,8 @@ async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
           msg_id INT NOT NULL,
           uuid UNSIGNED INT NOT NULL,
           state INT NOT NULL,
-          is_sender INT NOT NULL
+          is_sender INT NOT NULL,
+          uuid UNSIGNED INT NOT NULL DEFAULT 0,
       );
       CREATE UNIQUE INDEX 'uniq_rum' ON messages (room_id, username, msg_id);
       CREATE INDEX 'idx_ru' ON messages (room_id, uuid);
