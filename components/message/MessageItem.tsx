@@ -68,7 +68,7 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
             <MessageUnit msg={msg} style={{ alignSelf: 'flex-start' }} direction="left" />
           </Pressable>
           {msg.quote &&
-            <Text style={styles.quote}>{msg.senderId}: {(msg.quote!.content as TextMessage).text}</Text>
+            <Text style={styles.quote}>{msg.quote.senderId}: {(msg.quote!.content as TextMessage).text}</Text>
           }
           <Modal transparent visible={modalVisible}>
             <TouchableOpacity
@@ -128,7 +128,7 @@ export default function MessageItem({ msg, retry }: MessageItemProps) {
             <MessageUnit msg={msg} style={{ alignSelf: 'flex-end' }} direction="right" />
           </Pressable>
           {msg.quote &&
-            <Text style={styles.quote}>{msg.senderId}: {(msg.quote!.content as TextMessage).text}</Text>
+            <Text style={styles.quote}>{msg.quote.senderId}: {(msg.quote!.content as TextMessage).text}</Text>
           }
           <Modal transparent visible={modalVisible}>
             <TouchableOpacity
