@@ -482,6 +482,9 @@ export default function ChatScreen() {
       }, () => {
         logout()
       })
+    }).catch(e => {
+      console.log('useEffect error: ', e)
+      logout()
     })
   }, [])
 

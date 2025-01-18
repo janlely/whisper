@@ -210,14 +210,17 @@ export async function getImagesMessages(roomId: string): Promise<Message[]> {
 
 
 async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
-  const DATABASE_VERSION = 1;
+  const DATABASE_VERSION = 2;
   let currentDbVersion  = await db.getFirstAsync<{ user_version: number }>(
     'PRAGMA user_version'
   );
-  if (currentDbVersion!.user_version >= DATABASE_VERSION) {
+  let user_version = currentDbVersion!.user_version
+  console.log('user_version: ', user_version)
+  if (user_version >= DATABASE_VERSION) {
     return;
   }
-  if (currentDbVersion!.user_version === 0) {
+  if (user_version === 0) {
+    console.log('migrating db...')
     await db.execAsync(`
       DROP TABLE IF EXISTS kv;
       CREATE TABLE kv (
@@ -235,15 +238,20 @@ async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
           msg_id INT NOT NULL,
           uuid UNSIGNED INT NOT NULL,
           state INT NOT NULL,
-          is_sender INT NOT NULL,
-          uuid UNSIGNED INT NOT NULL DEFAULT 0,
+          is_sender INT NOT NULL
       );
       CREATE UNIQUE INDEX 'uniq_rum' ON messages (room_id, username, msg_id);
       CREATE INDEX 'idx_ru' ON messages (room_id, uuid);
       CREATE UNIQUE INDEX 'idx_k' ON kv (key);
     `);
-    await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+    user_version += 1
   }
+  if (user_version === 1) {
+    console.log('add quote column...')
+    await db.execAsync('alter table messages add column quote UNSIGNED INT NOT NULL DEFAULT 0;')
+    user_version += 1
+  }
+  await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }
 
 
