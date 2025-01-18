@@ -1,14 +1,14 @@
 import { AudioMessage, ImageMessage, Message, MessageState, MessageType, TextMessage, VideoMessage } from "@/types"
 import { HStack } from "../ui/hstack"
 import { Center } from "../ui/center"
-import { Pressable, Text, StyleSheet, View, ActivityIndicator, Modal, Dimensions, TouchableOpacity } from 'react-native';
+// import { Text } from "../ui/text"
+import { Pressable, StyleSheet, View, ActivityIndicator, Modal, Dimensions, TouchableOpacity, Text } from 'react-native';
 import React from "react";
 import { router } from "expo-router";
 import { Image } from "expo-image";
 import AudioAnimatedIcon from "./AudioAnimatedIcon";
 import { Audio } from 'expo-av';
 import { Sound } from "expo-av/build/Audio";
-import { RotateCcw } from "lucide-react-native";
 import Svg, { G, Path, Rect } from 'react-native-svg';
 import { getEventEmitter } from '@/utils'
 
@@ -375,7 +375,6 @@ const styles = StyleSheet.create({
   quote: {
     marginTop: 5,
     backgroundColor: '#d9dbda',
-    borderRadius: 2,
-    paddingHorizontal: 3 
+    borderRadius: 2
   }
 })
